@@ -95,63 +95,54 @@ a {
 display:none!important
 }
 }"
+
+
+tagList(
+  tags$html(lang = "en"),
+  tags$head(tags$style(HTML(navbar_js))),
+  # shiny::includeHTML("inst/app/www/google-analytics.html"),
+  # Leave this function for adding external resources
+  golem_add_external_resources(),
+  shinydisconnect::disconnectMessage(
+    text = HTML("Your session timed out. Please refresh the application."),
+    refresh = "Refresh now",
+    top = "center"
+  ),
   
   
-  tagList(
-    tags$html(lang = "en"),
-    tags$head(tags$style(HTML(navbar_js))),
-    # shiny::includeHTML("inst/app/www/google-analytics.html"),
-    # Leave this function for adding external resources
-    golem_add_external_resources(),
-    shinydisconnect::disconnectMessage(
-      text = HTML("Your session timed out. Please refresh the application."),
-      refresh = "Refresh now",
-      top = "center"
+  # List the first level UI elements here
+  # tags$head(img(src = "www/main-logo.png", height = "60px", alt = "MetCouncil logo")), #,'.navbar-brand{display:none;}')),
+  navbarPage(
+    title = div(style = "align:center",
+                a(href = "https://daneclimateaction.org/Initiatives/Tree-Canopy", target = "_blank", 
+                  img(src = "www/TreeCanopyCollaborativeLogo-crop.jpg", alt = "Tree Canopy Collaborative logo",
+                      # style="margin-top: -30px; padding-left:0px",
+                      height = 60))
     ),
-
-
-    # List the first level UI elements here
-    # tags$head(img(src = "www/main-logo.png", height = "60px", alt = "MetCouncil logo")), #,'.navbar-brand{display:none;}')),
-    navbarPage(
-      title = div(style = "align:center",
-        a(href = "https://metrocouncil.org/", target = "_blank", 
-          img(src = "www/main-logo.png", alt = "Met Council logo",
-            # style="margin-top: -30px; padding-left:0px",
-            height = 60)),
-        a(href = "https://treetrust.org/non-profit/", target = "_blank", 
-          img(src = "www/Tree Trust Logo Color w Transparent Background (Avatar).png", alt = "Tree Trust logo",
-            # style="margin-top: -25px;",
-            height = 60
-        )),
-        a(href = "https://www.nature.org/en-us/about-us/where-we-work/united-states/minnesota/", target = "_blank", 
-          img(src = "www/tnc-logo.svg", alt = "The Nature Conservancy logo",
-              style="margin-top: 15px;",
-              height = 45
-          ))
-      ),
-      windowTitle = "Growing Shade Tool",
-      id = "nav",
-      collapsible = TRUE,
-      position = "fixed-top",
-      header = tags$style(
-        ".navbar-right {
+    windowTitle = "Growing Shade Tool",
+    id = "nav",
+    collapsible = TRUE,
+    position = "fixed-top",
+    header = tags$style(
+      ".navbar-right {
                        float: right !important;
                        }",
-        "body {padding-top: 75px;}"
-      ),
-      tabPanel(
-        "HOME",
-        # id = "B",
-        # br(), # br(),
-        fluidRow((mod_storymap_ui("storymap_ui_1")))
-      ),
-      tabPanel(
-        "Mapping tool",
-        tags$footer(
-          class = 'd-none d-lg-block',#desktop
-          HTML('Source: <a href = "https://metrocouncil.org/Communities/Planning/Local-Planning-Assistance/Tree-Canopy.aspx" target = "_blank">Growing Shade Project</a>. Last updated on 2022-05-04. '),
-          align = "right",
-          style = "
+      "body {padding-top: 75px;}"
+    ),
+    tabPanel(
+      "HOME",
+      # id = "B",
+      # br(), # br(),
+      #fluidRow((mod_storymap_ui("storymap_ui_1")))
+      mod_home_ui("home_ui_1")
+    ),
+    tabPanel(
+      "Mapping tool",
+      tags$footer(
+        class = 'd-none d-lg-block',#desktop
+        HTML('Source: <a href = "https://daneclimateaction.org/Initiatives/Tree-Canopy" target = "_blank">Growing Shade Project</a>. Last updated on 2023-09-01. '),
+        align = "right",
+        style = "
               position:absolute;
               bottom:1em;
               right:0;
@@ -161,83 +152,122 @@ display:none!important
               padding: 0px;
               background-color: transparent;
               z-index: 1000;"
-        ),
-        # id = "demo",
-        div(
-          style = "width:100% !important;
+      ),
+      # id = "demo",
+      div(
+        style = "width:100% !important;
                     margin-left:0  !important; margin-top:30px  !important;
                     max-width: 4000px !important; min-width:100% !important",
-          sidebarLayout(
-            sidebarPanel(
-              # waiter::useWaitress(),
-              width = 6,
-              style = "height: 90vh; overflow-y: auto;",
-
-              # width = 2,
-              HTML("<h1><section style='font-size: 22pt;'>Welcome to the Growing Shade mapping tool</h1></section>"),
-              # HTML("<h1><section style='font-size: 22pt;' class='d-none d-lg-block'>Welcome to the Growing Shade mapping tool</h1></section>"),
-              # HTML("<h1><section style='font-size: 16pt;' class='d-block d-lg-none'>Welcome to the Growing Shade mapping tool</h1></section>"),
-              br(class="d-none d-lg-block"),
-              p(class="d-none d-lg-block",
-                "Please refer to the ", a("text user guide",
-                  href = "www/Growing Shade User Guide (January 2022).pdf",
-                  .noWS = "outside",
-                  target = "_blank"
-                ),
-                " or a ", a("recorded webinar",
-                  href = "https://youtu.be/3SKC-29AwME?t=1944",
-                  .noWS = "outside",
-                  target = "_blank"
-                ), " for help. Customize and create reports using the options below. Zoom in, or turn on the tree layer, to explore the tree canopy in year 2021."
+        sidebarLayout(
+          sidebarPanel(
+            # waiter::useWaitress(),
+            width = 6,
+            style = "height: 90vh; overflow-y: auto;",
+            
+            # width = 2,
+            HTML("<h1><section style='font-size: 22pt;'>Welcome to the Growing Shade mapping tool</h1></section><br>"),
+            HTML('<p>Click below to toggle the tutorial text on and off.</p><br>'),
+            HTML('<button id="tutorial">Tutorial</button><br><br>'),
+            HTML('<div class="help">
+            <p>
+            You can use this mapping tool to create data-driven reports for communities across Dane County. 
+            The tool has three main parts: 
+            <br>
+            <br>
+            1. Buttons to customize the geographical area and the variables used to calculate priority scores.
+            <br>
+            <br>
+            2. An interactive map of Dane County where the colors correspond to by priority scores. 
+            <br>
+            <br>
+            3. A detailed report that can be downloaded and shared.
+            </p>
+            </div>'),
+            tags$script(
+              '$(document).ready(function(){
+                $("div.help").hide();
+              	var tutorial = false;
+                  $("button#tutorial").click(function(){
+  	                if (tutorial == false) {
+  	                  $("div.help").toggle();
+  	                  $("button#tutorial").css({"background-color": "#3e8e41",
+                                                "box-shadow": "0 5px #666",
+                                                "transform": "translateY(4px)"});
+                      tutorial = true;
+                  } else if (tutorial == true) {
+   	                  $("div.help").toggle();
+   	                  $("button#tutorial").css({"background-color": "#57b57d",
+                                                "box-shadow": "0 9px #999",
+                                                "transform": "translateY(-4px)"});
+                      tutorial = false;
+                 }
+                });
+              });'
               ),
-              
-              p(class="d-block d-lg-none", 
-                "Please refer to the ", a("text user guide",
-                                          href = "www/Growing Shade User Guide (January 2022).pdf",
-                                          .noWS = "outside",
-                                          target = "_blank"
-                ),
-                " or a ", a("recorded webinar",
-                            href = "https://youtu.be/3SKC-29AwME?t=1944",
-                            .noWS = "outside",
-                            target = "_blank"
-                ), " for help."
-              ),
-              hr(style = "margin-top: 2px; margin-bottom: 2px "),
-              mod_map_selections_ui("map_selections_ui_1"),
-              # HTML('<hr style="border-top: black;border-top-style: solid;border-right-width: 5px;">'),
-              hr(style = "margin-top: 2px; margin-bottom: 2px "),
-
-              # br(),
-              mod_geo_selection_ui("geo_selection_ui_1"),
-              br(class="d-none d-lg-block"),
-              mod_report_ui("report_ui_1"),
-            ),
-            mainPanel(
-              width = 6,
-              # div(class="outer3",
-              fluidRow(div(
-                style = "top:25em !important;", # style = 'width:100% !important; top:25em !important; ',
-                mod_map_overview_ui("map_overview_ui_1")
-              )),
-            )
+            hr(style = "margin-top: 2px; margin-bottom: 2px "),
+            mod_geo_selection_ui("geo_selection_ui_1"),
+            # HTML('<hr style="border-top: black;border-top-style: solid;border-right-width: 5px;">'),
+            hr(style = "margin-top: 2px; margin-bottom: 2px "),
+            
+            # br(),
+            mod_map_selections_ui("map_selections_ui_1"),
+            br(class="d-none d-lg-block"),
+            HTML("<div class='help'>
+                 <p>
+                 Scroll down to read a detailed report of your results.
+                 Within the report, each section can be collapsed by clicking on the “minus” or “plus” symbol. 
+                 This may be useful if you wish to compare a specific report selection across different geographies.
+                 You can also download the full report at the bottom of the page.
+                 </p>
+                 </div>"),
+            mod_report_ui("report_ui_1"),
+          ),
+          mainPanel(
+            width = 6,
+            # div(class="outer3",
+            fluidRow(div(
+              style = "top:25em !important;", # style = 'width:100% !important; top:25em !important; ',
+              HTML("<div class='help'>
+                 <p>
+                 Use the “plus” and “minus” buttons or scroll to zoom in and out.
+                 Toggle map layers “on” or “off” with the button at the bottom of the map.
+                 Click and drag to move the map around.
+                 <br><br>
+                 If you want a picture of the map, we recommend pushing the 'full screen' button and taking a screenshot.
+                 <br><br>
+                 Note that the priority scores shown when you hover or click on an area are always for the <b>block group</b> your cursor is in.
+                 This does not change regardless of the geography level you have selected. To see the priority scores for a city, town, or neighborhood, scroll down in the report.
+                 </p>
+                 </div>"),
+              mod_map_overview_ui("map_overview_ui_1")
+            ))
           )
         )
-      ),
-      tabPanel(
-        "Resources",
-        mod_other_resources_ui("other_resources_ui_1")
-      ),
-      tabPanel(
-        "FAQ",
-        mod_faq_ui("faq_ui_1")
-      ),
-      tabPanel(
-        "methods",
-        mod_methods_ui("methods_ui_1")
       )
-    )
+    ),
+    tabPanel(
+      "Resources",
+      mod_other_resources_ui("other_resources_ui_1")
+    ),
+    tabPanel(
+      "FAQ",
+      mod_faq_ui("faq_ui_1")
+    ),
+    tabPanel(
+      "methods",
+      mod_methods_ui("methods_ui_1")
+    ),
+    tabPanel(
+      "About Us",
+      # id = "B",
+      #br(), br(),
+      mod_about_ui("about_ui_1"),
+      HTML('<h2><b>Our Work</b></h2>'),
+      br(),
+      fluidRow((mod_storymap_ui("storymap_ui_1")))
+    ),
   )
+)
 }
 
 #' Add external Resources to the Application
@@ -252,7 +282,7 @@ golem_add_external_resources <- function() {
   add_resource_path(
     "www", app_sys("app/www")
   )
-
+  
   tags$head(
     shiny::includeHTML("inst/app/www/google-analytics.html"),
     favicon(),

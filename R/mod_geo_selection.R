@@ -13,7 +13,24 @@ mod_geo_selection_ui <- function(id) {
   tagList(
     # waiter::useWaitress(),
     # shinybrowser::detect(),
-    
+
+HTML("<div class='help'>
+     <p>
+     Select a geographical level to map across.
+     <br>
+     <br>
+     <b>Cities and townships:</b> 
+     All cities, villages, and towns contained within Dane County. Select a city/township by name in the dropdown menu.
+     <br>
+     <br>
+     <b>Neighborhoods:</b> 
+     Neighborhoods are only available in the City of Madison. The boundaries are determined by local residents. Select a neighborhood by name in the dropdown menu.
+     <br>
+     <br>
+     <b>Census block group:</b> 
+     Block groups are areas defined by the US census bureau that contain about 250-550 housing units. Click on an area on the map to select a block group.
+     </p>
+     </div>"),
 HTML("<h2><section style='font-size:20pt'>Geography</h2>"),
     radioButtons(
       ns("geo"),
@@ -26,7 +43,7 @@ HTML("<h2><section style='font-size:20pt'>Geography</h2>"),
       # ), # multiple = F,
       choiceNames = list("Cities and townships", 
                          HTML("<section class='d-block d-lg-none'>Neighborhoods</section>
-                              <section class='d-none d-lg-block'>Neighborhoods</section>"), # (Minneapolis and St.Paul only)</section>"), #desktop
+                              <section class='d-none d-lg-block'>Neighborhoods (Madison only)</section>"), # (Minneapolis and St.Paul only)</section>"), #desktop
                          "Census block group"),
       choiceValues = list("ctus", "nhood", "blockgroups"),
       selected = "ctus",

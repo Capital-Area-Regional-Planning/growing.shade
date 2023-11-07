@@ -63,6 +63,33 @@ mod_map_selections_ui <- function(id) {
 .tooltip.in{opacity:1!important;}
 "
 ))),
+HTML("<div class='help'>
+     <p>
+     Select a theme to map priority. Each preset theme averages the priority score of several variables -- hover over a theme to see which variables it includes.
+     <br>
+     <br>
+     <b>Climate change:</b> 
+     	Trees protect people and property from the risks of climate change, such as by reducing impacts of floods and increased heat.
+     <br>
+     <br>
+     <b>Conservation:</b> 
+     	Trees are a source of food and habitat to birds and small mammals while also providing opportunities for pollination.
+     <br>
+     <br>
+     <b>Environmental justice:</b> 
+     Trees are not always distributed equitably in U.S. cities, unjustly depriving residents of the myriad benefits canopy provideds.  
+     <br>
+     <br>
+     <b>Public Health:</b> 
+     Trees provide shade, improve local air quality, reduce air pollution, and can even boost the mental health.
+     <br>
+     <br>
+     <b>Custom:</b> 
+     Map priority using any combination of 25+ variables. 
+     Click on a variable to turn in “on” or “off” – a “check mark” indicates that the input is being used to calculate priority scores. 
+     You can also “select all” or “deselect all” variables within a drop down menu.
+     </p>
+     </div>"),
     # fluidRow(
     radioButtons(ns("preset"),
       HTML("<h2><section style='font-size:20pt'>Priority layer</h2></section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset or create a custom layer to understand the overlap. </section></p>"),

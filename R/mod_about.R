@@ -1,4 +1,4 @@
-#' methods UI Function
+#' home UI Function
 #'
 #' @description A shiny Module.
 #'
@@ -7,30 +7,30 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_methods_ui <- function(id) {
+mod_about_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # br(class="d-none d-lg-block"), br(class="d-none d-lg-block"),
+    # br(class="d-none d-lg-block"), br(),
     br(), br(),
     shiny::div(
-      id = "methods",
-      includeMarkdown(system.file("app/www/methods2.md", package = "planting.shade"))
+      id = "about",
+      includeMarkdown(system.file("app/www/about.md", package = "planting.shade"))
     ),
     br()
   )
 }
 
-#' methods Server Functions
+#' faq Server Functions
 #'
 #' @noRd
-mod_methods_server <- function(id) {
+mod_about_server <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
   })
 }
 
 ## To be copied in the UI
-# mod_methods_ui("methods_ui_1")
+# mod_home_ui("about_ui_1")
 
 ## To be copied in the server
-# mod_methods_server("methods_ui_1")
+# mod_home_server("about_ui_1")

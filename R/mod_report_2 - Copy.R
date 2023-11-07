@@ -20,8 +20,7 @@ mod_report_ui <- function(id) {
     fluidRow(uiOutput(ns("treecanopy_box"))),
     fluidRow(uiOutput(ns("priority_box"))),
     fluidRow(uiOutput(ns("disparity_box"))),
-    fluidRow(uiOutput(ns("temp_box"))),
-    fluidRow(uiOutput(ns("landuse_box"))), 
+    fluidRow(uiOutput(ns("temp_box"))), 
     fluidRow(uiOutput(ns("download_box")))
   )
 }
@@ -125,42 +124,6 @@ mod_report_server <- function(id,
         pivot_wider(names_from = variable, values_from = raw_value)
       return(equityplot)
     })
-    
-    param_landuse <- reactive({
-      
-      if (geo_selections$selected_geo == "blockgroups") {
-        landuseplot <- bg_canopy_lu[bg_canopy_lu$GEO_NAME == param_area(), ]
-      } else if (geo_selections$selected_geo == "nhood") {
-        landuseplot <- nhood_canopy_lu[nhood_canopy_lu$GEO_NAME == param_area(), ]
-      } else if (geo_selections$selected_geo == "ctus") {
-        landuseplot <- ctu_canopy_lu[ctu_canopy_lu$GEO_NAME == param_area(), ]
-      }
-
-      landuseplot <- landuseplot %>% 
-        pivot_longer(Agriculture:Woodlands, names_to = "class") %>% 
-        drop_na() %>% 
-        arrange(value) %>%
-        mutate(class=factor(class, levels=class))
-      return(landuseplot)
-    })
-    
-    param_opp <- reactive({
-      
-      if (geo_selections$selected_geo == "blockgroups") {
-        opp_plot <- bg_opp_lu[bg_opp_lu$GEO_NAME == param_area(), ]
-      } else if (geo_selections$selected_geo == "nhood") {
-        opp_plot <- nhood_opp_lu[nhood_opp_lu$GEO_NAME == param_area(), ]
-      } else if (geo_selections$selected_geo == "ctus") {
-        opp_plot <- ctu_opp_lu[ctu_opp_lu$GEO_NAME == param_area(), ]
-      }
-      
-      opp_plot <- opp_plot %>% 
-        pivot_longer(Agriculture:Woodlands, names_to = "class") %>% 
-        drop_na() %>% 
-        arrange(value) %>%
-        mutate(class=factor(class, levels=class))
-      return(opp_plot)
-    })
 
     output$geoarea <- renderUI({
       ns <- session$ns
@@ -182,7 +145,7 @@ mod_report_server <- function(id,
         paste0(
           if (geo_selections$selected_geo == "blockgroups") {
             paste0(
-              param_areasummary()$fancyname, " has an existing tree canopy coverage of ", round(param_areasummary()$canopy_percent * 100, 2),
+              param_areasummary()$fancyname, " sdf has an existing tree canopy coverage of ", round(param_areasummary()$canopy_percent * 100, 2),
               "% in 2021. Compared to other block groups across the region, the tree canopy in the selected block group is ",
               if (param_areasummary()$canopy_percent > (param_areasummary()$avgcanopy + .02)) {
                 "above"
@@ -393,9 +356,9 @@ mod_report_server <- function(id,
       req(TEST() != "")
       tagList(HTML(
         paste0(
-          "Using the",
+          "Using the ",
           tolower(map_selections$preset),
-          "layer, ", #signing test
+          " layer, ", #signing test
           if (geo_selections$selected_geo == "blockgroups") {
             paste0(
               param_areasummary()$fancyname, 
@@ -802,151 +765,7 @@ mod_report_server <- function(id,
       },
       deleteFile = TRUE
     )
-    
-    
-    
-    report_landuse_plot <- reactive({
-      req(TEST() != "")
-      
-      
-      
-      df <- param_landuse()
-      
-      fig_landuse <-
-        ggplot(df, aes(x=class, y=value)) +
-        geom_segment( aes(x=class, xend=class, y=0, yend=value)) +
-        geom_point(color=councilR::colors$cdGreen, stroke=3) +
-        coord_flip() +
-        councilR::theme_council() +
-        theme(
-          panel.grid.minor = element_blank(),
-          panel.grid.major = element_blank(),
-          strip.placement = "outside",
-          axis.title.y = element_text(
-            angle = 90,
-            vjust = 5
-          ),
-          plot.margin = margin(7, 7, 9, 9),
-          axis.line = element_line(),
-          axis.ticks = element_line(),
-          axis.text.y = element_text(vjust = .5, hjust = 1, size=10),
-          plot.caption = element_text(
-            size = rel(1),
-            colour = "grey30",
-            vjust = -2
-          )
-        ) +
-        labs(
-          x = "Land use category", y = "Percentage canopy",
-          caption = # expression(italic(
-          "Source: Analysis of Sentinel-2 satellite imagery (2021), \nDane County land use inventory (2020)" # ))
-        ) 
-          
-      
-      return(fig_landuse)
-    })
-    
-    
-    output$landuse_plot <- renderImage(
-      {
-        req(TEST() != "")
-        
-        # A temp file to save the output.
-        # This file will be removed later by renderImage
-        outfile <- tempfile(fileext = ".png")
-        
-        # Generate the PNG
-        png(outfile,
-            width = 400 * 4,
-            height = 450 * 4,
-            res = 72 * 4
-        )
-        print(report_landuse_plot())
-        dev.off()
-        
-        # Return a list containing the filename
-        list(
-          src = outfile,
-          contentType = "image/png",
-          width = 400,
-          height = 450,
-          alt = "Figure showing what percent of tree canopy is on each land use category."
-        )
-      },
-      deleteFile = TRUE
-    )
-    
-    
-    report_opp_plot <- reactive({
-      req(TEST() != "")
-      
-      df <- param_opp()
-      
-      fig_opp <-
-        ggplot(df, aes(x=class, y=value)) +
-        geom_segment( aes(x=class, xend=class, y=0, yend=value)) +
-        geom_point(color=councilR::colors$cdGreen, stroke=3) +
-        coord_flip() +
-        councilR::theme_council() +
-        theme(
-          panel.grid.minor = element_blank(),
-          panel.grid.major = element_blank(),
-          strip.placement = "outside",
-          axis.title.y = element_text(
-            angle = 90,
-            vjust = 5
-          ),
-          plot.margin = margin(7, 7, 9, 9),
-          axis.line = element_line(),
-          axis.ticks = element_line(),
-          axis.text.y = element_text(vjust = .5, hjust = 1, size=10),
-          plot.caption = element_text(
-            size = rel(1),
-            colour = "grey30",
-            vjust = -2
-          )
-        ) +
-        labs(
-          x = "Land use category", y = "Percentage total area",
-          caption = # expression(italic(
-            "Source: Analysis of Sentinel-2 satellite imagery (2021), \nDane County land use inventory (2020)" # ))
-        ) 
-      
-      
-      return(fig_opp)
-    })
-    
-    
-    output$opp_plot <- renderImage(
-      {
-        req(TEST() != "")
-        
-        # A temp file to save the output.
-        # This file will be removed later by renderImage
-        outfile <- tempfile(fileext = ".png")
-        
-        # Generate the PNG
-        png(outfile,
-            width = 400 * 4,
-            height = 450 * 4,
-            res = 72 * 4
-        )
-        print(report_opp_plot())
-        dev.off()
-        
-        # Return a list containing the filename
-        list(
-          src = outfile,
-          contentType = "image/png",
-          width = 400,
-          height = 450,
-          alt = "Figure showing what percent of tree canopy is on each land use category."
-        )
-      },
-      deleteFile = TRUE
-    )
-    
-    
+
 
     ndvilabs <- c(
       "<img src='inst/app/www/NDVI_.17.png' height='75' /><br>Low<br>green space",
@@ -1036,46 +855,6 @@ mod_report_server <- function(id,
       deleteFile = FALSE
     )
 
-    # landuse section -----------
-    landuse_text <- reactive({
-      ns <- session$ns
-      req(TEST() != "")
-      para <- HTML(paste0(
-        "The ability to preserve or expand canopy is dependent on land use and ownership. The chart below shows the estimated percentage of the <b>total</b> canopy in ",
-        if (geo_selections$selected_geo == "blockgroups") {
-          paste0(param_areasummary()$fancyname)
-        } else {
-          paste0(param_area())
-        },
-        " for each land use category. Any category that contains less than 5% of the total canopy is not shown. Note that the land use data is from 2020, so will be less accurate in rapidly developing areas."
-      ))
-      return(para)
-    })
-    
-    opp_text <- reactive({
-      ns <- session$ns
-      req(TEST() != "")
-      para <- HTML(paste0(
-        "In ",
-        if (geo_selections$selected_geo == "blockgroups") {
-          paste0(param_areasummary()$fancyname)
-        } else {
-          paste0(param_area())
-        },
-        ", there are an estimated ",
-        if (geo_selections$selected_geo == "blockgroups") {
-          paste0(bg_opp_lu[bg_opp_lu$GEO_NAME == param_area(), 2])
-        } else if (geo_selections$selected_geo == "nhood") {
-          paste0(nhood_opp_lu[nhood_opp_lu$GEO_NAME == param_area(), 2])
-        } else if (geo_selections$selected_geo == "ctus") {
-          paste0(ctu_opp_lu[ctu_opp_lu$GEO_NAME == param_area(), 2])
-        },
-        " square acres of land suitable for planting trees. This area is calculated by finding green spaces that do not already contain canopy -- it is likely an underestimation (see methods section).",
-        "The chart below shows the estimated percentage of the <b>total</b> area suitable for planting that falls on each land use category. Any category that contains less than 5% of the total area is not shown. Note that the land use data is from 2020, so will be less accurate in rapidly developing areas."
-      ))
-      return(para)
-    })
-    
 # 'Other' species make up a larger percent of the tree canopy today, but these species are mostly introduced species rather than a diverse assemblage of native species (as was the case before 1900). "
 
     param_reportname <- reactive({
@@ -1120,12 +899,8 @@ mod_report_server <- function(id,
           param_equityplot = report_equity_plot(),
           param_tempplot = imgOne, # report_temp_plot(),
           # param_otherparea = report_other_para(),
-          para_heattext = heat_text(),
-          param_landuseplot = report_landuse_plot(),
-          param_landusetext = landuse_text(),
-          param_opptext = opp_text(),
-          param_oppplot = report_opp_plot()
-          
+
+          para_heattext = heat_text()
         )
         # Knit the document, passing in the `params` list, and eval it in a
         # child of the global environment (this isolates the code in the document
@@ -1373,35 +1148,6 @@ mod_report_server <- function(id,
         )
         # uiOutput(ns("get_temp_plot"))
       )
-    })
-    
-    output$landuse_box <- renderUI({
-      req(TEST() != "")
-      
-      shinydashboard::box(
-        title = ("Land Use"),
-        width = 12, collapsed = shinybrowser::get_device() == "Mobile",
-        status = "danger", solidHeader = F, collapsible = TRUE,
-        landuse_text(),
-        br(),
-        fluidRow(
-          align = "center",
-          if(shinybrowser::get_device() == "Mobile") {
-            renderPlot(report_landuse_plot())
-          } else {
-            imageOutput(ns("landuse_plot"), height = "100%", width = "100%")}
-          ),
-          br(),
-          opp_text(),
-          br(),
-        fluidRow(
-          align = "center",
-          if(shinybrowser::get_device() == "Mobile") {
-            renderPlot(report_opp_plot())
-          } else {
-            imageOutput(ns("opp_plot"), height = "100%", width = "100%")}
-        )
-        )
     })
     
     output$download_box <- renderUI({

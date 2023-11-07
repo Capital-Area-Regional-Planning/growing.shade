@@ -14,7 +14,7 @@ mod_faq_ui <- function(id) {
     br(), br(),
     shiny::div(
       id = "faq",
-      includeMarkdown(system.file("app/www/faq.md", package = "planting.shade"))
+      includeMarkdown(system.file("app/www/faq2.md", package = "planting.shade"))
     ),
     br()
   )

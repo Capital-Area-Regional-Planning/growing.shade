@@ -102,49 +102,49 @@ mod_map_overview_server <- function(input, output, session,
       # addMapPane(name = "geooutline", zIndex = 149) %>%
       addMapPane("Priority score", zIndex = 120) %>%
       # addMapPane("Water", zIndex = 151) %>%
-      addMapPane(name = "Road outlines", zIndex = 151) %>%
+      #addMapPane(name = "Road outlines", zIndex = 151) %>%
       addMapPane(name = "geooutline2", zIndex = 152) %>%
       addMapPane("redline", zIndex = 160) %>%
       # addMapPane("trans", zIndex = 200) %>%
       # addMapPane("EAB", zIndex = 201) %>%
       addMapPane("outline", zIndex = 250) %>%
       addMapPane("labels", zIndex = 251) %>%
-      addMapPane("Trees", zIndex = 130) %>%
-      # leaflet.multiopacity::addOpacityControls(layerId = c(
-      #   "Trees",
-      #   "score"
-      # ),
-      # collapsed = T, position = "bottomright"#,
-      # # title = "<strong>Opacity control</strong>",
-      # # renderOnLayerAdd = TRUE
+      # addMapPane("Trees", zIndex = 130) %>%
+      # # leaflet.multiopacity::addOpacityControls(layerId = c(
+      # #   "Trees",
+      # #   "score"
+      # # ),
+      # # collapsed = T, position = "bottomright"#,
+      # # # title = "<strong>Opacity control</strong>",
+      # # # renderOnLayerAdd = TRUE
+      # # ) %>%
+      # 
+      # # add tree tiles
+      #   addTiles(ui_params$set[ui_params$param == "tree_tile_location"],
+      #        attribution = NULL,
+      #   options = c(
+      #     tileOptions(opacity = .6),
+      #     pathOptions(pane = "Trees")
+      #   ),
+      #   group = "Trees"
       # ) %>%
-
-      # add tree tiles
-        addTiles(ui_params$set[ui_params$param == "tree_tile_location"],
-             attribution = NULL,
-        options = c(
-          tileOptions(opacity = .6),
-          pathOptions(pane = "Trees")
-        ),
-        group = "Trees"
-      ) %>%
       #  #aerial with roads
-      addProviderTiles("Stamen.TonerLines", # this is GOOD, but less into it
-        options = c(
-          providerTileOptions(maxZoom = 18),
-          pathOptions(pane = "Road outlines")
-        ),
-        group = "Road outlines"
-      ) %>%
+      # addProviderTiles("Stamen.TonerLines", # this is GOOD, but less into it
+      #   options = c(
+      #     providerTileOptions(maxZoom = 18),
+      #     pathOptions(pane = "Road outlines")
+      #   ),
+      #   group = "Road outlines"
+      # ) %>%
       # Satellite") %>%
-      addProviderTiles("Stamen.TonerLabels",
+      addProviderTiles("CartoDB.PositronOnlyLabels",
         options = c(
           providerTileOptions(maxZoom = 18),
           pathOptions(pane = "labels")
         ), # pathOptions(pane = "Stamen Toner"),
         group = "Satellite"
       ) %>%
-      addProviderTiles("Stamen.TonerLabels",
+      addProviderTiles("CartoDB.PositronOnlyLabels",
         options = providerTileOptions(maxZoom = 18), # pathOptions(pane = "Stamen Toner"),
         group = "Map"
       ) %>%
@@ -222,6 +222,7 @@ mod_map_overview_server <- function(input, output, session,
       addPolygons(
         data = filter(ctu_list, GEO_NAME == ui_params$set[ui_params$param == "cityselected"]),
         stroke = TRUE,
+        weight = 3,
         color = "#0073e0", # "blue",
         fill = NA,
         opacity = 1,
@@ -260,10 +261,10 @@ mod_map_overview_server <- function(input, output, session,
         ),
         overlayGroups = c(
           "Priority score",
-          "Trees",
+          #"Trees",
           # "Water",
           # "Active transit stops",
-          "Road outlines",
+          #"Road outlines",
           "Historically redlined areas",
           # "Emerald ash borer",
           "Jurisdiction outlines" # ,
@@ -273,8 +274,8 @@ mod_map_overview_server <- function(input, output, session,
       hideGroup(c(
         # "Active transit stops",
         # "Emerald ash borer",
-        "Historically redlined areas",
-        "Road outlines"
+        "Historically redlined areas"
+        #"Road outlines"
       )) #%>%
       # groupOptions(
       #   group = "Trees",
@@ -435,6 +436,7 @@ mod_map_overview_server <- function(input, output, session,
           addPolygons(
             data = filter(ctu_list, GEO_NAME == geo_selections$selected_area),
             stroke = TRUE,
+            weight = 3,
             color = "#0073e0", # "blue",
             fill = NA,
             opacity = 1,
@@ -448,6 +450,7 @@ mod_map_overview_server <- function(input, output, session,
           addPolygons(
             data = filter(nhood_list, GEO_NAME == geo_selections$selected_area),
             stroke = TRUE,
+            weight = 3,
             color = "#0073e0", # "blue",
             fill = NA,
             opacity = 1,
@@ -479,6 +482,7 @@ mod_map_overview_server <- function(input, output, session,
           addPolygons(
             data = mn_bgs %>% filter(GEO_NAME == input$map_shape_click$id),
             stroke = TRUE,
+            weight = 3,
             color = "#0073e0", #"blue",
             fill = NA,
             opacity = 1,

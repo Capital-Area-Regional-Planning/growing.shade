@@ -16,7 +16,7 @@ mod_other_resources_ui <- function(id) {
       id = "otherresources",
       # includeMarkdown(paste0(here::here(),("inst/app/www/otherresources.md")))
       
-      includeMarkdown(system.file("app/www/otherresources.md", package = "planting.shade"))
+      includeMarkdown(system.file("app/www/otherresources2.md", package = "planting.shade"))
       # includeMarkdown(system.file("inst/app/www/otherresources.md", package = "planting.shade"))
     ),
     br()
