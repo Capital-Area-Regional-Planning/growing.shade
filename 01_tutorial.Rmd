@@ -10,6 +10,8 @@ urlcolor: blue
 
 # Introduction
 
+*This is an adapted version of Growing Shade for use in Dane County, WI. While most of the comments/code remain the same, significant changes are included in italics. The original source code can be downloaded here: https://github.com/Metropolitan-Council/growing.shade*
+
 Growing Shade is a prioritization tool for tree canopy enhancement and preservation. Growing Shade was conceptualized by the Metropolitan Council, Tree Trust, and The Nature Conservancy with a focus on the Twin Cities (Minnesota) area. All analyses and code were developed by Ellen Esch. The Twin Cities version of Growing Shade can  be accessed at: www.growingshade.com or https://metrotransitmn.shinyapps.io/growing-shade/. 
 
 The components of Growing Shade relevant to population demographics (i.e., determining environmental justice priority areas) can be scaled to any area within the United States. The components relevant to the tree canopy have been parameterized to the Twin Cities region, but should work pretty well in other temperate areas with deciduous and coniferous trees.
@@ -17,6 +19,7 @@ The components of Growing Shade relevant to population demographics (i.e., deter
 This tutorial walks through how to grab and synthesize various data pieces which go into making Growing Shade. This document should be useful when doing data updates update, or trying to scale this workflow to other regions/areas.
 
 The first time you run this code, it will be helpful to walk step-by-step through the various pieces. There are several places where you'll get instructions to request and save API keys, or other manual steps which can't be automated. However, after you walk thorough it initially, in future runs (if needed) or for small data/geography adjustments, you can probably be successful running everything in one go!
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -35,6 +38,9 @@ library(tidycensus)
 library(ggbeeswarm)
 library(RSocrata)
 library(here)
+#Added the terra library for processing for Dane County
+#The same code could likely be written with sf, but I'm personally more familiar with terra
+#library(terra)
 
 
 st_erase <- function(x, y) st_difference(x, st_union(st_combine(y)))
@@ -51,22 +57,22 @@ This code is set up to use/process 2020-era census geographies at the block grou
 #####
 # Geography variables
 ####
-state <- c("MN")
-county <- c("Anoka", "Carver", "Dakota", "Hennepin", "Ramsey", "Scott", "Washington") # either type in specific county names, or for all counties within a state assign `county <- NULL`
+state <- c("WI")
+county <- c("Dane") # either type in specific county names, or for all counties within a state assign `county <- NULL`
 
 #######
 # Demographic variables
 ######
-acs_year <- 2020 # The 2017-2021 ACS 5-year estimates are scheduled to be released on December 8, 2022. So this can be updated with "2021" then.
+acs_year <- 2021 # The 2017-2021 ACS 5-year estimates are scheduled to be released on December 8, 2022. So this can be updated with "2021" then.
 census_year <- 2020
 
-process_demographics <- TRUE
+process_demographics <- FALSE
 detailed_population_count <- FALSE # are there more accurate counts of total population and housing units available (for calculating density)? If so, bring those in
 
 ######
 # Tree canopy and/or geography files
 ######
-regional_specific_data <- FALSE # go to 02_geographies.Rmd and 03_remotesensing.Rmd scripts to process/make these files, as applicable
+regional_specific_data <- TRUE # go to 02_geographies.Rmd and 03_remotesensing.Rmd scripts to process/make these files, as applicable
 ```
 
 # Process demographic data
@@ -263,10 +269,10 @@ if (process_demographics == TRUE) {
           under18 = rowSums(across(c(
             paste0("B01001_00", c(3:6)), # under18 m
             paste0("B01001_0", c(27:30)) # under18 f
-          ), na.rm = T)),
+          )), na.rm = TRUE),
           over65 = rowSums(across(c(
             paste0("B01001_0", c(20:25, 44:49)) # over 65m, f
-          ), na.rm = T))
+          )), na.rm = TRUE)
         ) %>%
         mutate(across(c(under18, over65), ~ .x / B01001_001), # , .names = "{.col}_percent"),
           sens_age = under18 + over65,
@@ -326,10 +332,10 @@ if (process_demographics == TRUE) {
       under18 = rowSums(across(c(
         paste0("B01001_00", c(3:6)), # under18 m
         paste0("B01001_0", c(27:30)) # under18 f
-      ), na.rm = T)),
+      )), na.rm = T),
       over65 = rowSums(across(c(
         paste0("B01001_0", c(20:25, 44:49)) # over 65m, f
-      ), na.rm = T)),
+      )), na.rm = T),
       nodisability = rowSums(across(c(paste0("C18108_0", c("05", "09", "13")))))
     ) %>%
     mutate(across(c(under18, over65), ~ .x / B01001_001), # , .names = "{.col}_percent"),
@@ -367,7 +373,8 @@ Also, because this CDC data currently uses old census geographies, you will need
 if (process_demographics == TRUE) {
   raw_health <- read.socrata(
     # "https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?$where=stateabbr in('MN', 'WI')",
-    paste0("https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?$where=stateabbr in('", state, "')"),
+    #paste0("https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?$where=stateabbr in('", state, "')"),
+    paste0("https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?stateabbr=", state, "&countyname=", county),
     app_token = Sys.getenv("CDC_KEY"),
     email = Sys.getenv("CDC_EMAIL"),
     password = Sys.getenv("CDC_PASSWORD")
@@ -454,6 +461,7 @@ In any case, the following files should exist in the `data` folder (again, the `
   - `bg_id` (block group id)
   - `jurisdiction` (city or cities which the block group belongs to - where applicable cities should be separated by a ", "; i.e. "St. Francis, Bethel")
 
+*See 02_geographies.Rmd for processing for Dane County*
 
 ```{r city-nhood-geometries}
 if (regional_specific_data == FALSE) {
@@ -601,6 +609,9 @@ These are the resulting files which should exist:
   - `ndvi_uncultivated` (average NDVI over uncultivated land)
   - `ndvi_land` (average NDVI over all land, including cropland)
   
+*See 03_remotesensing.Rmd for processing for Dane County*
+
+  
 ```{r remote-sensing-random-data}
 if (regional_specific_data == FALSE) {
   bg_canopy <- bg_geo %>%
@@ -667,19 +678,22 @@ It is my recommendation to use the EJSCREEN data because the process can be auto
 
 Additionally, please note that the 2021 EJSCREEN data is using old (2010-vintage) Census geographies (at the tract level). Fortunately, the crosswalk downloaded to process the PLACES health data will additionally work here. 
 
+*The 2023 data was available, but I had issues automating the downloaded. I downloaded it manually from the link above, saved it in the data-raw folder, and commented out the automation portion of the chunk below*
 
 ```{r air-toxins}
 if (process_demographics == TRUE) {
-  temp <- tempfile()
-  temp2 <- tempfile()
-  download.file(
-    "https://gaftp.epa.gov/EJSCREEN/2021/EJSCREEN_2021_USPR_Tracts.csv.zip",
-    destfile = temp
-  )
-  unzip(zipfile = temp, exdir = temp2)
-  list.files(temp2)
+  # temp <- tempfile()
+  # temp2 <- tempfile()
+  # download.file(
+  #   #"https://gaftp.epa.gov/EJSCREEN/2021/EJSCREEN_2021_USPR_Tracts.csv.zip",
+  #   "https://gaftp.epa.gov/EJSCREEN/2023/EJSCREEN_2023_Tracts_with_AS_CNMI_GU_VI.csv.zip",
+  #   destfile = temp
+  # )
+  # unzip(zipfile = temp, exdir = temp2)
+  # list.files(temp2)
 
-  ejscreen <- read_csv(paste0(temp2, pattern = "/EJSCREEN_2021_USPR_Tracts.csv"),
+  #ejscreen <- read_csv(paste0(temp2, pattern = "/EJSCREEN_2023_Tracts_with_AS_CNMI_GU_VI.csv"),
+  ejscreen <- read_csv("data-raw/EJSCREEN_2023_Tracts_with_AS_CNMI_GU_VI.csv",
     col_select = c(ST_ABBREV, CANCER, ID)
   ) %>%
     filter(ST_ABBREV == state)
@@ -717,6 +731,9 @@ This section relies on processing remote sensing data outside of R, and may requ
   - `bg_id` (block group geo-identifier)
   - `avg_temp` (average land surface temperature during a heatwave)
   - `prim_flood` (amount of land susceptible to primary flooding)
+  
+*See 03_remotesensing.Rmd for processing for Dane County*
+
 
 ```{r environmental-data}
 if (regional_specific_data == FALSE) {
@@ -728,12 +745,17 @@ if (regional_specific_data == FALSE) {
       prim_flood = sample(0:100, n(), replace = T) / 100
     )
 } else {
-  env_data <- readxl::read_xlsx(paste0(here::here(), "/data-raw/CLIMATE_BG20.xlsx")) %>%
+  #env_data <- readxl::read_xlsx(paste0(here::here(), "/data-raw/CLIMATE_BG20.xlsx")) %>%
+  #details about this table are in 03_remotesensing - Liz
+  env_data <- read_csv(paste0(here::here(), "/data-raw/CLIMATE_BG55.csv")) %>%
     transmute(
-      bg_id = BG20,
+      bg_id = BG55,
       avg_temp = AVG_TEMP,
       prim_flood = PRIM_FLOOD
-    )
+    ) %>% 
+    transform(bg_id = as.character(bg_id)) %>% 
+    #filter out the two block groups that make up lake mendota and monona
+    filter(bg_id != "550259917030" & bg_id != "550259917020")
 }
 ```
 
@@ -746,51 +768,45 @@ This may not be relevant for other regions, but here is the code.
 
 This data describes the amount of block groups which were redlined. 
 
+*The original code used data specific to the Twin Cities region, so I rewrote this chunk.*
 
-```{r holc-percents}
-if (regional_specific_data == FALSE) {
-  holc_data <- bg_geo %>%
-    st_drop_geometry() %>%
-    transmute(
-      bg_id = GEOID,
-      holc_pred = 0
-    )
-} else {
-  holc_data <- readxl::read_xlsx(paste0(here::here(), "/data-raw/HOLC_BG20.xlsx")) %>%
-    transmute(
-      bg_id = BG20,
-      holc_pred = HOLC_4_RED
-    ) %>%
-    right_join(bg_geo %>% st_drop_geometry() %>% transmute(bg_id = GEOID)) %>%
-    mutate(holc_pred = if_else(is.na(holc_pred), 0, holc_pred))
-}
-```
+```{r redlining}
 
-```{r holc-geography}
-# Remove open water. "all non residential"
+#download historical shapefile from https://github.com/americanpanorama/Census_HOLC_Research/tree/main/2020_Census_Tracts, then put in the data-raw folder
 
-## holc  ---------------
-# ftp://ftp.gisdata.mn.gov/pub/gdrs/data/pub/us_mn_state_metc/plan_historic_holc_appraisal/gpkg_plan_historic_holc_appraisal.zip
-temp <- tempfile()
-download.file("ftp://ftp.gisdata.mn.gov/pub/gdrs/data/pub/us_mn_state_metc/plan_historic_holc_appraisal/gpkg_plan_historic_holc_appraisal.zip",
-  destfile = temp
-)
-
-redline_raw <- sf::read_sf(unzip(temp, "plan_historic_holc_appraisal.gpkg")) %>%
-  filter(HSG_SCALE == "Hazardous") %>%
-  sf::st_union() %>%
+#limit to Dane County and redlined areas (grade D)
+#TODO cut out water/non residential areas like they did in original code? Not much is included, so I don't know if this is necessary
+redline_raw <- st_read("data-raw/holc_census_tracts/holc_census_tracts.shp") %>% 
+  filter(state == "WI" & county_cod == "025" & holc_grade == "D") %>% 
   sf::st_transform(4326)
 
-fs::file_delete("plan_historic_holc_appraisal.gpkg")
+bg <- vect(bg_geo)
+
+holc <- vect(redline_raw) %>% 
+  project(bg)
+
+holc_data <- data.frame(matrix(nrow = 353, ncol = 2))
+columns= c("bg_id", "holc_pred")
+colnames(holc_data) = columns
+
+holc_data$bg_id <- bg$GEOID
+
+#calculate the percentage of redlined area within each block group
+for (i in 1:nrow(bg)) {
+  clip <- crop(holc, bg[i,])
+  perc <- round(sum(expanse(clip))/expanse(bg[i,]), digits = 3)
+  if (length(perc > 0)) {
+    holc_data[i,2] <- perc
+  } else {
+    holc_data[i,2] <- 0
+  }
+}
+
+holc_data <- holc_data %>% 
+  #filter out the two block groups that make up lake mendota and monona
+  filter(bg_id != "550259917030" & bg_id != "550259917020")
 ```
 
-## MPCA area of environmental justice concern
-
-This data was used initially, but it seems as if MPCA has stopped updating the data, thus it no longer seems relevant.  
-
-```{r mpca}
-# nothing here yet; this seems to be out-of-date...but it could come from equity considerations data
-```
 
 # Create final data pieces
 
@@ -1061,14 +1077,14 @@ map_centroid <- region_outline %>%
 
 ui_params <- tribble(
   ~param, ~set, ~number,
-  "cityselected", if (nrow(ctu_list) >= 129) {
-    ctu_list[[129, 1]]
+  "cityselected", if (nrow(ctu_list) >= 60) {
+    ctu_list[[27, 1]]
   } else {
     ctu_list %>%
       arrange(-n_blockgroups) %>%
       .[[1, 1]]
-  }, NA_real_, # "Oakdale", NA_real_,
-  "nhoodselected", "Frogtown", NA_real_,
+  }, NA_real_, #"Madison", NA_real_,
+  "nhoodselected", "Capitol Neighborhoods", NA_real_,
   "center_latitude", NA_character_, st_coordinates(map_centroid)[2], # 44.963,
   "center_longitude", NA_character_, st_coordinates(map_centroid)[1], #-93.32,
   "center_zoom", NA_character_, 10,
@@ -1093,6 +1109,8 @@ usethis::use_data(nhood_ui, overwrite = TRUE)
 
 Please note that this application should run even if no region-specific data is added; it will just get filled in with random data. So please make sure that all random data is replaced BEFORE production. 
 
+*I initially had trouble with incompatibility between the councilR library and my version of R, but was able to download by running remotes::install_github("Metropolitan-Council/councilR")*
+
 ```{r, message = F, warning = F}
 options(
   shiny.launch.browser = TRUE,
@@ -1111,6 +1129,7 @@ planting.shade::render_guides()
 
 # Run the application
 run_app()
+
 ```
 
 ## Troubleshooting application

@@ -1,5 +1,11 @@
 README
 ================
+Liz Levy
+07 November 2023
+
+A version of Growing Shade for Dane County, Wisconsin: https://capital-area-rpc.shinyapps.io/growing_shade-main/
+
+================
 Ellen Esch
 03 October 2022
 

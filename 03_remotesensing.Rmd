@@ -8,6 +8,8 @@ always_allow_html: true
 urlcolor: blue
 ---
 
+*This is an adapted version of Growing Shade for use in Dane County, WI. While most of the comments/code remain the same, significant changes are included in italics. The original source code can be downloaded here: https://github.com/Metropolitan-Council/growing.shade*
+
 For the Twin Cities, Growing Shade nests block groups (the core level of analyses) into larger neighborhood and city-level geographies. This step is not easily applied to other regions, so will likely need to be specifically tailored if applying the methods elsewhere. 
 
 **NOTE:** this script **DOES** rely on some parameters found inside the "global" `01_tutorial.Rmd` script, so please be sure to run that before running this script! It is okay if the tutorial script encounters an error and can't run all the way through, you'll still be saving information about which state/counties to use here!
@@ -22,7 +24,7 @@ library(tidycensus)
 library(ggbeeswarm)
 library(RSocrata)
 library(here)
-
+library(terra)
 
 st_erase = function(x, y) st_difference(x, st_union(st_combine(y)))
 `%not_in%` <- Negate(`%in%`)
@@ -51,6 +53,8 @@ I created a grid (n = 1015) across the region, and created a model to compare th
 The final calibration coefficient (at least for 2021 tree canopy) is 0.885246, meaning that Sentinel sees about 11% more trees in areas. Another way to think about this is that Sentinel detects area with at least 89% tree canopy coverage (i.e., if Sentinel sees 1,000 acres of trees, UMN sees more like 885 acres).
 
 In other temperate, upper Midwest areas, the .88 coefficient is probably sufficient. Otherwise, figuring out and adjusting a calibration coefficient for another area likely requires some pretty bespoke analyses and has specific data set needs which may not be widely available. 
+
+*I haven't done the same analysis for Dane County yet, so used the same 0.885246 coefficient*
 
 
 ```{r, calibrate-tree-cover}
@@ -113,54 +117,70 @@ calibrate_trees %>%
     -   GEE data is in repo "users/ehe/MetCoucil/GrowingShade_CanopyCoverage"
     -   <https://code.earthengine.google.com/a0da66053ecb26b668df4297c4ebed59>
 
+*The GEE output from the link above didn't seem to output a file in the correct format to be processed by the original code. I made changes to the code below and the GEE script: https://code.earthengine.google.com/d34583e1d03f11b2c02ec7a3a0e2592d*
 
 
-```{r gee-canopy-fxn}
-# function for processing gee data
-process_gee <- function(x, .group = NULL){
-  x %>%
-  mutate(sq_miles = stringr::str_remove_all(sq_miles, c("\\{groups=\\[|\\}\\]\\}")))  %>%
 
-  separate(sq_miles, sep = "\\},", into = c("treeless", "trees")) %>%
-  mutate(treeless = stringr::str_remove_all(treeless, "\\{classification=0, sum=|\\]\\}"),
-         trees = stringr::str_remove_all(trees, "\\{classification=1, sum=|\\}\\]\\}"),
+
+```{r canopy-processing bg}
+#block groups
+
+#just using the same coefficient for the twin cities for now, will potentially calculate for Madison later
+calib_coeff <- .88
+
+bg_canopy <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_blockgroups_year2021.csv")) %>% 
+  arrange(GEOID)
+
+bg_geo <- arrange(bg_geo, GEOID)
+bg_canopy$ALAND <- bg_geo$ALAND
+
+bg <- vect(bg_geo)
+#calculate total area of all block groups in meters
+total_area <- expanse(bg,"m")
+
+bg_canopy <- bg_canopy %>% 
+  rename('trees' = '1', 'treeless' = '0') %>% 
+  #convert square acres (GEE output) to meters
+  mutate(trees = trees*4046.856422,
+         treeless = total_area - trees,
          treeless = if_else(ALAND == 0, 0, as.numeric(treeless)),
          trees = if_else(ALAND == 0, 0, as.numeric(trees)),
-         canopy_percent = trees / (trees + treeless) * calib_coeff, #using the calibration coefficient is important for twin cities
+         canopy_percent = trees / (trees + treeless) * calib_coeff, 
          canopy_percent = if_else(is.na(canopy_percent), 0, canopy_percent)) %>%
     filter(ALAND != 0) %>% #new 2020 block groups sometimes are only water
-    group_by(!!enquo(.group)) %>%
     mutate(avgcanopy = mean(canopy_percent)) %>%
-    # mutate(sum_trees = sum(trees, na.rm = T),
-    #        sum_treeless = sum(treeless, na.rm = T),
-    #        avgcanopy = sum_trees / (sum_trees + sum_treeless) * calib_coeff) %>%
-    select(-ALAND, -trees, -treeless)
-}
+    select(-ALAND, -trees, -treeless) %>% 
+    rename(bg_id = GEOID) %>%
+    transform(bg_id = as.character(bg_id)) %>% 
+    #filter out the two block groups that make up lake mendota and monona
+    filter(bg_id != "550259917030" & bg_id != "550259917020")
 
 ```
 
+```{r canopy-processing ctu}
+#cities
 
-```{r canopy-processing}
-###
-# block groups
-###
-bg_canopy <- read_csv(paste0(here::here(), "/data-raw/TreeMilesIncAg_blockgroups2020_year2021.csv"),
-                 col_select = c(GEOID, sq_miles), col_types = c("GEOID" = "c")) %>%
-  left_join(bg_geo %>% st_drop_geometry() %>% select(GEOID, ALAND)) %>%
-  rename(GEO_NAME = GEOID) %>%
-  process_gee() %>%
-  rename(bg_id = GEO_NAME)
+ctu_list_raw <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_ctu_year2021.csv")) %>% 
+  arrange(GEO_NAME)
 
-###
-# cities
-###
-ctu_list_raw <- read_csv(paste0(here::here(), "/data-raw/TreeMilesIncAg_ctus_year2021.csv"),
-                   col_select = c(CTU_NAME, sq_miles),
-                   col_types = cols(sq_miles = "c", CTU_NAME = "c")) %>%
-  mutate(CTU_NAME = if_else(CTU_NAME == "Credit River Twp.", "Credit River", CTU_NAME),
-         ALAND = 99) %>% #ALAND doesn't matter here, so just set it to a random number
-  rename(GEO_NAME = CTU_NAME) %>%
-  process_gee() %>%
+ctu_geo <- st_read(paste0(here::here(), "/data-raw/gee_canopy_data/cities/ctu.shp")) %>% 
+  arrange(GEO_NAME)
+
+ctu <- vect(ctu_geo)
+#calculate total area of all cities in meters
+total_area <- expanse(ctu,"m")
+
+  
+
+ctu_list_raw <- ctu_list_raw %>% 
+  rename('trees' = '1', 'treeless' = '0') %>% 
+  #convert square acres (GEE output) to meters
+  mutate(trees = trees*4046.856422,
+         treeless = total_area - trees,
+         canopy_percent = trees / (trees + treeless) * calib_coeff, 
+         canopy_percent = if_else(is.na(canopy_percent), 0, canopy_percent)) %>%
+    mutate(avgcanopy = mean(canopy_percent)) %>%
+    select(-trees, -treeless) %>%
   full_join(left_join(ctu_crosswalk, bg_canopy) %>% 
   group_by(GEO_NAME) %>%
   summarise(
@@ -171,25 +191,29 @@ ctu_list_raw <- read_csv(paste0(here::here(), "/data-raw/TreeMilesIncAg_ctus_yea
   arrange(GEO_NAME) %>%
   full_join(ctu_geo) %>%
   st_as_sf()
+```
 
-### 
-# neighborhoods
-###
-nhood_list_raw <- read_csv(paste0(here::here(), "/data-raw/TreeMilesIncAg_neighborhoods_year2021.csv"),
-                         col_select = c(GEO_NAME, city, sq_miles), 
-                         col_types = c("GEO_NAME" = "c")) %>%
-  mutate(GEO_NAME = case_when(GEO_NAME == "CapitolRiver Council" ~ "Downtown",
-                              GEO_NAME == "Thomas-Dale/Frogtown" ~ "Frogtown",
-                              GEO_NAME == "West Side Community Organization" ~ "West Side",
-                              GEO_NAME == "West 7th Federation/Fort Road" ~ "West 7th-Fort Road",
-                              GEO_NAME == "Highland" ~ "Highland Park",
-                              GEO_NAME == "Summit Hill Association" ~ "Summit Hill",
-                              GEO_NAME == "Eastview-Conway-Battle Creek-Highwood Hills" ~ "Battle Creek-Conway-Eastview-Highwood Hills",
-                              GEO_NAME == "The Greater East Side" ~ "Greater East Side",
-                              GEO_NAME == "Como" ~ "Como Park",
-                              TRUE ~ GEO_NAME),
-         ALAND = 99) %>% #again, just a random number here
-  process_gee(.group = city) %>%
+```{r canopy-processing nhood}
+#neighborhoods
+nhood_list <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_nhood_year2021.csv")) %>% 
+  arrange(GEO_NAME)
+
+nhood_geo <- st_read(paste0(here::here(), "/data-raw/gee_canopy_data/nhood/nhood.shp")) %>% 
+  arrange(GEO_NAME)
+
+nhood <- vect(nhood_geo)
+#calculate total area of all cities in meters
+total_area <- expanse(nhood,"m")
+
+nhood_list_raw <- nhood_list %>% 
+  rename('trees' = '1', 'treeless' = '0') %>% 
+  #convert square acres (GEE output) to meters
+  mutate(trees = trees*4046.856422,
+         treeless = total_area - trees,
+         canopy_percent = trees / (trees + treeless) * calib_coeff, 
+         canopy_percent = if_else(is.na(canopy_percent), 0, canopy_percent)) %>%
+    mutate(avgcanopy = mean(canopy_percent)) %>%
+    select(-trees, -treeless) %>% 
   full_join(left_join(nhood_crosswalk, bg_canopy) %>% 
   group_by(GEO_NAME, city) %>%
   summarise(
@@ -199,8 +223,6 @@ nhood_list_raw <- read_csv(paste0(here::here(), "/data-raw/TreeMilesIncAg_neighb
   )) %>%
   full_join(nhood_geo) %>%
   st_as_sf()
-
-
 ```
 
 
@@ -211,16 +233,16 @@ We do this for all land (no water!) and non-cultivated land (excluding crops/ag 
 
 ```{r ndvi_bgs}
 ndvi_uncultivated <- 
-  read_csv(paste0(here::here(), "/data-raw/uncultivatedNDVI_blockgroups2020_year2021.csv"),
+  read_csv(paste0(here::here(), "/data-raw/DC_uncultivated_meanNDVI_bg_year2021.csv"),
                     na = "No data",
                        col_types = cols(GEOID = "c", `system:index` = "c", Year = 'd',  `.geo` = 'c')) %>%
-  rename(GEOID = GEOID)
+  rename(GEOID = GEOID, ndvi_uncultivated = ndvi)
 
 ndvi_allland <- 
-  read_csv(paste0(here::here(), "/data-raw/landNDVI_blockgroups2020_year2021.csv"),
+  read_csv(paste0(here::here(), "/data-raw/DC_land_meanNDVI_bg_year2021.csv"),
                     na = "No data",
                        col_types = cols(GEOID = "c", `system:index` = "c", Year = 'd',  `.geo` = 'c')) %>%
-  rename(GEOID = GEOID)
+  rename(GEOID = GEOID, ndvi_land = ndvi)
   
 bg_ndvi <- ndvi_uncultivated %>%
   dplyr::select(GEOID, ndvi_uncultivated) %>%
@@ -235,6 +257,649 @@ bg_ndvi <- ndvi_uncultivated %>%
 
 ```{r}
   save(bg_canopy, bg_ndvi, ctu_list_raw, nhood_list_raw, file = paste0(here::here(), "/data-raw/canopy_data.rda"))
+
+```
+
+
+## Climate vulnerability processing
+
+*The original code used data specific to the Twin Cities region. This code was written to create an equivalent  climate vulnerability data set for Dane County.*
+
+*This code processes two data sets that should be in data-raw:*
+*1. FEMA primary flood plains: https://geodata.wisc.edu/catalog/E2CE7AA7-7E6B-4E6C-9237-DA55D4AB69CC (TODO - this data set had extra information, can the floodplains be downloaded directly from FEMA?)*
+*2. Average land surface temperature during a heatwave, derived from MODIS data and google earth engine:
+https://code.earthengine.google.com/010f56d1c02224980092e2f6711cb186*
+
+
+```{r environmental-processing}
+# Block group geometries are downloaded in 01_tutorial.Rmd
+#TODO - am I including lake areas in the temperature?
+bg <- vect(bg_geo)
+
+#the average land surface temperature
+avgTemp <- rast(paste0(here::here(), "/data-raw/heatwave_mean_lst.tif"))
+#convert temperatures from Kelvin to Fahrenheit
+avgTemp$tempF <- (avgTemp$tempScale - 273.15) * 9/5 + 32
+#calculate the mean temperature within each block group
+bg_temp <- zonal(avgTemp$tempF, bg, "mean", na.rm=TRUE)
+
+#primary flood plain
+flood <- vect(paste0(here::here(), "/data-raw/fema_floodplain/2023_DC_FEMA_floodplain.shp"))
+#reproject
+flood <- project(flood, bg)
+
+clim_vul <- data.frame(matrix(nrow = 353, ncol = 3))
+columns= c("BG55", "AVG_TEMP", "PRIM_FLOOD")
+colnames(clim_vul) = columns
+
+clim_vul$BG55 <- bg$GEOID
+clim_vul$AVG_TEMP <- bg_temp$tempF
+
+#calculate the percentage of land susceptible to flooding withing each block group
+for (i in 1:nrow(bg)) {
+  clip <- crop(flood, bg[i,])
+  perc <- expanse(clip)/expanse(bg[i,])
+  if (length(perc > 0)) {
+    clim_vul[i,3] <- perc
+  } else {
+    clim_vul[i,3] <- 0
+  }
+}
+
+#write csv
+write.csv(clim_vul, paste0(here::here(), "/data-raw/CLIMATE_BG55.csv"), row.names = FALSE)
+```
+
+
+##Calculate % of total canopy for land use categories
+
+TODO - clean up this code - should definitely extract a lot of it into functions
+```{r}
+#load datasets
+tree_mask <- rast(paste0(here::here(), "/data-raw/tree_mask_2021.tif"))
+lui <- rast(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/lui_2020_rasterized_10m.tif"))
+
+#create block group canopy lu dataframe
+bg_canopy_lu <- data.frame(matrix(nrow = 0, ncol=17))
+colnames(bg_canopy_lu) = c("GEO_NAME", unlist(unique(lui$LANDUSE_CA)))
+bg_canopy_lu$GEO_NAME = as.character(bg_canopy_lu$GEO_NAME)
+
+#calculate the % of total canopy on each land use category for block groups
+for (i in 1:nrow(bg_geo)) {
+  print(paste(i, "/", nrow(bg_geo)))
+  #grab the vector data for the area
+  aoi <- bg_geo[i,]
+  #mask the tree and lui rasters to the correct area
+  tree_mask_crop <- crop(tree_mask, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  cur_canopy <- zonal(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE)
+  #Subtract any canopy on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(cur_canopy, LANDUSE_CA == 'Water')$trees) != 0) {
+    total <- sum(cur_canopy$trees) - filter(cur_canopy, LANDUSE_CA == 'Water')$trees
+  } else {
+    total <- sum(cur_canopy$trees)
+  }
+  
+  cur_canopy <- cur_canopy %>%
+    mutate(perc = trees/total*100) %>%
+    select(-trees) %>%
+    spread(LANDUSE_CA, perc) %>%
+    mutate(GEO_NAME = aoi$GEOID)
+  #add to the big dataframe
+  bg_canopy_lu <- bind_rows(bg_canopy_lu, cur_canopy)
+}
+
+#post-processing
+#filter out lake mendota and monona block groups
+bg_canopy_lu <- filter(bg_canopy_lu, GEO_NAME != "550259917030") %>% 
+  filter(GEO_NAME != "550259917020") %>% 
+  #remove misclassified water data
+  select(-Water) %>% 
+  #set anything with less than 5% coverage as NA
+  mutate(across(Agriculture:Woodlands, round)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+bg_canopy_lu <- bg_canopy_lu[, colSums(is.na(bg_canopy_lu)) != nrow(bg_canopy_lu)]
+
+
+#calculate the % of total canopy on each land use category for neighborhoods
+
+#create neighborhood group canopy lu dataframe
+nhood_canopy_lu <- data.frame(matrix(nrow = 0, ncol=17))
+colnames(nhood_canopy_lu) = c("GEO_NAME", unlist(unique(lui$LANDUSE_CA)))
+nhood_canopy_lu$GEO_NAME = as.character(nhood_canopy_lu$GEO_NAME)
+
+nhood_geo_proj <- st_transform(nhood_geo, 4269)
+
+for (i in 1:nrow(nhood_geo_proj)) {
+  print(paste(i, "/", nrow(nhood_geo_proj)))
+  #grab the vector data for the area
+  aoi <- nhood_geo_proj[i,]
+  #mask the tree and lui rasters to the correct area
+  tree_mask_crop <- crop(tree_mask, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  cur_canopy <- zonal(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE)
+  #Subtract any canopy on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(cur_canopy, LANDUSE_CA == 'Water')$trees) != 0) {
+    total <- sum(cur_canopy$trees) - filter(cur_canopy, LANDUSE_CA == 'Water')$trees
+  } else {
+    total <- sum(cur_canopy$trees)
+  }
+  
+  cur_canopy <- cur_canopy %>%
+    mutate(perc = trees/total*100) %>%
+    select(-trees) %>%
+    spread(LANDUSE_CA, perc) %>%
+    mutate(GEO_NAME = aoi$GEO_NAME)
+  #add to the big dataframe
+  nhood_canopy_lu <- bind_rows(nhood_canopy_lu, cur_canopy)
+}
+
+#post-processing
+nhood_canopy_lu <- nhood_canopy_lu %>% 
+  select(-Water) %>% 
+  mutate(across(Agriculture:Woodlands, round)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+nhood_canopy_lu <- nhood_canopy_lu[, colSums(is.na(nhood_canopy_lu)) != nrow(nhood_canopy_lu)]
+
+  
+#calculate the % of total canopy on each land use category for ctu
+
+#create ctu group canopy lu dataframe
+ctu_canopy_lu <- data.frame(matrix(nrow = 0, ncol=17))
+colnames(ctu_canopy_lu) = c("GEO_NAME", unlist(unique(lui$LANDUSE_CA)))
+ctu_canopy_lu$GEO_NAME = as.character(ctu_canopy_lu$GEO_NAME)
+
+ctu_geo_proj <- st_transform(ctu_geo, 4269)
+
+for (i in 1:nrow(ctu_geo_proj)) {
+  print(paste(i, "/", nrow(ctu_geo_proj)))
+  #grab the vector data for the area
+  aoi <- ctu_geo_proj[i,]
+  #mask the tree and lui rasters to the correct area
+  tree_mask_crop <- crop(tree_mask, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  cur_canopy <- zonal(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE)
+  #Subtract any canopy on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(cur_canopy, LANDUSE_CA == 'Water')$trees) != 0) {
+    total <- sum(cur_canopy$trees) - filter(cur_canopy, LANDUSE_CA == 'Water')$trees
+  } else {
+    total <- sum(cur_canopy$trees)
+  }
+  
+  cur_canopy <- cur_canopy %>%
+    mutate(perc = trees/total*100) %>%
+    select(-trees) %>%
+    spread(LANDUSE_CA, perc) %>%
+    mutate(GEO_NAME = aoi$GEO_NAME)
+  #add to the big dataframe
+  ctu_canopy_lu <- bind_rows(ctu_canopy_lu, cur_canopy)
+}
+
+#post-processing
+ctu_canopy_lu <- ctu_canopy_lu %>% 
+  select(-Water) %>%
+  mutate(across(Agriculture:Woodlands, round)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+  #delete any columns with only NA values
+ctu_canopy_lu <- ctu_canopy_lu[, colSums(is.na(ctu_canopy_lu)) != nrow(ctu_canopy_lu)]
+  
+#save all 3 files
+save(bg_canopy_lu, ctu_canopy_lu, nhood_canopy_lu, file = paste0(here::here(), "/data-raw/landuse_data.rda"))
+
+```
+
+
+##Create a map of planting opportunities
+
+```{r}
+ndvi <- rast(paste0(here::here(), "/data-raw/summer_ndvi_2021.tif"))
+tree_mask <- rast(paste0(here::here(), "/data-raw/tree_mask_2021.tif"))
+
+#arbitrary ndvi threshold - the goal is to filter out anything that's not vegetation
+#I decided on .7 by just looking at some grassy open areas like parks, but it probably deserves a more systematic method
+ndvi_thresh <- .7
+opp_map <- crop(ndvi, tree_mask, mask=TRUE) %>% 
+  classify(matrix(c(0, ndvi_thresh, NA), ncol=3, byrow=TRUE), include.lowest=TRUE) %>% 
+  mask(tree_mask, maskvalues=1) %>%
+  #replace ndvi values with a boolean value
+  classify(matrix(c(0, 1, 1), ncol=3, byrow=TRUE), include.lowest=TRUE)
+
+writeRaster(opp_map, paste0(here::here(), "/data-raw/opp_map_.7ndvi.tif"), filetype = "GTiff", datatype = "INT1U")
+```
+
+##Calculate % of opportunities for land use categories
+
+
+```{r}
+#load datasets
+opp_map <- rast(paste0(here::here(), "/data-raw/opp_map_.7ndvi.tif"))
+lui <- rast(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/lui_2020_rasterized_10m.tif"))
+
+#aoi <- ctu_geo_proj[10,]
+find_lui <- function(aoi, geo) {
+  #mask the opp and lui rasters to the correct area
+  opp_crop <- crop(opp_map, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  opp_lui <- zonal(opp_crop, lui_crop, fun="sum", na.rm=TRUE) %>% 
+    rename(pixels = `uncultivated summer max NDVI`) %>% 
+    drop_na()
+  #Subtract any opportunities on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(opp_lui, LANDUSE_CA == 'Water')$pixels) != 0) {
+    total <- sum(opp_lui$pixels) - filter(opp_lui, LANDUSE_CA == 'Water')$pixels
+  } else {
+    total <- sum(opp_lui$pixels)
+  }
+  
+  opp_lui <- opp_lui %>%
+    mutate(perc = pixels/total*100) %>% 
+    #mutate('Total Opportunity' = units::drop_units(total*100/st_area(aoi))*100) %>% 
+    mutate(Acres = sum(pixels)*100/4046.856422) %>% 
+    select(-pixels) %>% 
+    spread(LANDUSE_CA, perc)
+  
+  if (geo == "bg") {  
+    opp_lui <- mutate(opp_lui, GEO_NAME = aoi$GEOID)
+  } else if (geo == "ctu" | geo == "nhood") {
+    opp_lui <- mutate(opp_lui, GEO_NAME = aoi$GEO_NAME)
+  } 
+  
+  return (opp_lui)
+}
+
+
+
+#calculate the % of total canopy on each land use category for block groups
+
+#create block group canopy lu dataframe
+bg_opp_lu <- data.frame(matrix(nrow = 0, ncol=18))
+colnames(bg_opp_lu) = c("GEO_NAME", "Acres", unlist(unique(lui$LANDUSE_CA)))
+bg_opp_lu$GEO_NAME = as.character(bg_opp_lu$GEO_NAME)
+#bg_geo_proj <- st_transform(bg_geo, 4269)
+
+for (i in 1:nrow(bg_geo)) {
+  print(paste(i, "/", nrow(bg_geo)))
+  #add to the big dataframe
+  bg_opp_lu <- bind_rows(bg_opp_lu,  find_lui(bg_geo[i,], "bg"))
+}
+
+#post-processing
+#filter out lake mendota and monona block groups
+bg_opp_lu <- filter(bg_opp_lu, GEO_NAME != "550259917030") %>% 
+  filter(GEO_NAME != "550259917020") %>% 
+  #remove misclassified water data
+  select(-Water) %>% 
+  #set anything with less than 5% coverage as NA
+  mutate(across(Agriculture:Woodlands, round)) %>%
+  mutate(Acres = round(Acres, 2)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+bg_opp_lu <- bg_opp_lu[, colSums(is.na(bg_opp_lu)) != nrow(bg_opp_lu)]
+
+
+#calculate the % of total canopy on each land use category for neighborhoods
+
+#create neighborhood canopy lu dataframe
+nhood_opp_lu <- data.frame(matrix(nrow = 0, ncol=18))
+colnames(nhood_opp_lu) = c("GEO_NAME", "Acres", unlist(unique(lui$LANDUSE_CA)))
+nhood_opp_lu$GEO_NAME = as.character(nhood_opp_lu$GEO_NAME)
+nhood_geo_proj <- st_transform(nhood_geo, 4269)
+
+for (i in 1:nrow(nhood_geo_proj)) {
+  print(paste(i, "/", nrow(nhood_geo_proj)))
+  #add to the big dataframe
+  nhood_opp_lu <- bind_rows(nhood_opp_lu,  find_lui(nhood_geo_proj[i,], "nhood"))
+}
+
+#post-processing
+nhood_opp_lu <- nhood_opp_lu %>% 
+  #remove misclassified water data
+  select(-Water) %>% 
+  #set anything with less than 5% coverage as NA
+  mutate(across(Agriculture:Woodlands, round)) %>%
+  mutate(Acres = round(Acres, 2)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+nhood_opp_lu <- nhood_opp_lu[, colSums(is.na(nhood_opp_lu)) != nrow(nhood_opp_lu)]
+
+
+#calculate the % of total canopy on each land use category for neighborhoods
+
+#create neighborhood canopy lu dataframe
+ctu_opp_lu <- data.frame(matrix(nrow = 0, ncol=18))
+colnames(ctu_opp_lu) = c("GEO_NAME", "Acres", unlist(unique(lui$LANDUSE_CA)))
+ctu_opp_lu$GEO_NAME = as.character(ctu_opp_lu$GEO_NAME)
+#ctu_geo_proj <- st_transform(ctu_geo, 4269)
+
+for (i in 1:nrow(ctu_geo_proj)) {
+  print(paste(i, "/", nrow(ctu_geo_proj)))
+  #add to the big dataframe
+  ctu_opp_lu <- bind_rows(ctu_opp_lu,  find_lui(ctu_geo_proj[i,], "ctu"))
+}
+
+#post-processing
+ctu_opp_lu <- ctu_opp_lu %>% 
+  #remove misclassified water data
+  select(-Water) %>% 
+  #set anything with less than 5% coverage as NA
+  mutate(across(Agriculture:Woodlands, round)) %>%
+  mutate(Acres = round(Acres, 2)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+ctu_opp_lu <- ctu_opp_lu[, colSums(is.na(ctu_opp_lu)) != nrow(ctu_opp_lu)]
+
+#save all 3 files
+save(bg_opp_lu, ctu_opp_lu, nhood_opp_lu, file = paste0(here::here(), "/data-raw/landuse_opp_data.rda"))
+
+```
+
+Experimental 'zoom-in' planner:
+
+```{r}
+
+#load datasets
+ndvi <- rast(paste0(here::here(), "/data-raw/summer_ndvi_2021.tif"))
+tree_mask <- rast(paste0(here::here(), "/data-raw/tree_mask_2021.tif"))
+#lui2 <- vect(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/LUI_2020_Dane_County_Project.shp"))
+lui <- rast(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/lui_2020_rasterized_10m.tif"))
+
+#create block group canopy lu dataframe
+bg_canopy_lu <- data.frame(matrix(nrow = 0, ncol=17))
+colnames(bg_canopy_lu) = c("GEO_NAME", unlist(unique(lui$LANDUSE_CA)))
+bg_canopy_lu$GEO_NAME = as.character(bg_canopy_lu$GEO_NAME)
+
+#bg_canopy_lu$GEO_NAME = bg_geo$GEOID
+#lui2 <- st_read(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/LUI_2020_EXPORT_for_CARPC.gdb"))
+aoi <- filter(bg_geo, GEOID == "550250132011")
+#aoi <- sf::st_transform(filter(nhood_geo, GEO_NAME == "Vilas"), 4269)
+#aoi <- sf::st_transform(filter(ctu_geo, GEO_NAME == "Belleville"), 4269)
+#aoi <- vect(aoi)
+
+ndvi_crop <- crop(ndvi, aoi)
+ndvi_crop <- crop(ndvi, aoi, mask=TRUE)
+
+tree_mask_crop <- crop(tree_mask, aoi)
+lui_crop <- crop(lui, ndvi_crop, ext=FALSE)
+r <- rasterize(lui_crop, ndvi_crop, "LANDUSE_CA") %>% 
+  #mask out areas outside of the boundary
+  mask(aoi)
+#tst <- sf::st_transform(filter(nhood_geo, GEO_NAME == "Vilas"), 4269)
+#tst <- sf::st_transform(filter(ctu_geo, GEO_NAME == "Albion"), 4269)
+
+#ndvi_crop <- rast(st_crop(ndvi, aoi))
+#tree_mask_crop <- rast(st_crop(tree_mask, aoi))
+#use a 3x3 moving window to find larger areas of deficient canopy
+#this means each pixel measures about how much canopy is present in .5 mile 
+tree_mask_focal <- focal(tree_mask_crop, 3, sum)
+#arbitrary ndvi threshold - the goal is to filter out anything that's not vegetation
+#I decided on .7 by just looking at some grassy open areas like parks, but it probably deserves a more systematic method
+ndvi_thresh <- .7
+ndvi_crop <- classify(ndvi_crop, matrix(c(0, ndvi_thresh, 0), ncol=3, byrow=TRUE), include.lowest=TRUE)
+#mask out areas that already have trees
+opp_map <- mask(tree_mask_focal, tree_mask_crop, maskvalues=1) %>% 
+  #mask out areas outside of the boundary
+  mask(aoi) %>% 
+  #mask out areas that aren't greenspace
+  mask(ndvi_crop, maskvalues=0) %>% 
+  mask(ndvi_crop, maskvalues=NA) %>% 
+  #make a simplified summary
+  classify(matrix(c(0, 2, 1, 2, 5, 2, 5, 8, 3), ncol=3, byrow=TRUE), include.lowest=TRUE)
+
+total <- units::drop_units(st_area(aoi))
+  
+  # technically more exact since it uses the shapefile boundaries instead of the raster, but practically made less than 1% difference and was much slower
+  # cur_canopy <- extract(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE, exact=TRUE)
+  # cur_canopy$class <- lui_crop$LANDUSE_CA
+  # cur_canopy <- cur_canopy %>%
+  #   drop_na() %>%
+  #   group_by(class) %>%
+  #   summarise(total = sum(trees)) %>%
+  #   mutate(perc = total/sum(total)*100) %>%
+  #   select(-total) %>%
+  #   spread(class, perc) %>%
+  #   mutate(GEO_NAME = aoi$GEOID)
+  
+
+#calculate the % of total canopy on each land use category for block groups
+for (i in 1:nrow(bg_geo)) {
+  print(paste(i, "/", nrow(bg_geo)))
+  #grab the vector data for the area
+  aoi <- bg_geo[i,]
+  #mask the tree and lui rasters to the correct area
+  tree_mask_crop <- crop(tree_mask, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  cur_canopy <- zonal(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE)
+  #Subtract any canopy on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(cur_canopy, LANDUSE_CA == 'Water')$trees) != 0) {
+    total <- sum(cur_canopy$trees) - filter(cur_canopy, LANDUSE_CA == 'Water')$trees
+  } else {
+    total <- sum(cur_canopy$trees)
+  }
+  
+  cur_canopy <- cur_canopy %>%
+    mutate(perc = trees/total*100) %>%
+    select(-trees) %>%
+    spread(LANDUSE_CA, perc) %>%
+    mutate(GEO_NAME = aoi$GEOID)
+  #add to the big dataframe
+  bg_canopy_lu <- bind_rows(bg_canopy_lu, cur_canopy)
+}
+
+#post-processing
+#filter out lake mendota and monona block groups
+bg_canopy_lu <- filter(bg_canopy_lu, GEO_NAME != "550259917030") %>% 
+  filter(GEO_NAME != "550259917020") %>% 
+  #remove misclassified water data
+  select(-Water) %>% 
+  #set anything with less than 5% coverage as NA
+  mutate(across(Agriculture:Woodlands, round)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+bg_canopy_lu <- bg_canopy_lu[, colSums(is.na(bg_canopy_lu)) != nrow(bg_canopy_lu)]
+
+
+#calculate the % of total canopy on each land use category for neighborhoods
+
+#create neighborhood group canopy lu dataframe
+nhood_canopy_lu <- data.frame(matrix(nrow = 0, ncol=17))
+colnames(nhood_canopy_lu) = c("GEO_NAME", unlist(unique(lui$LANDUSE_CA)))
+nhood_canopy_lu$GEO_NAME = as.character(nhood_canopy_lu$GEO_NAME)
+
+nhood_geo_proj <- st_transform(nhood_geo, 4269)
+
+for (i in 1:nrow(nhood_geo_proj)) {
+  print(paste(i, "/", nrow(nhood_geo_proj)))
+  #grab the vector data for the area
+  aoi <- nhood_geo_proj[i,]
+  #mask the tree and lui rasters to the correct area
+  tree_mask_crop <- crop(tree_mask, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  cur_canopy <- zonal(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE)
+  #Subtract any canopy on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(cur_canopy, LANDUSE_CA == 'Water')$trees) != 0) {
+    total <- sum(cur_canopy$trees) - filter(cur_canopy, LANDUSE_CA == 'Water')$trees
+  } else {
+    total <- sum(cur_canopy$trees)
+  }
+  
+  cur_canopy <- cur_canopy %>%
+    mutate(perc = trees/total*100) %>%
+    select(-trees) %>%
+    spread(LANDUSE_CA, perc) %>%
+    mutate(GEO_NAME = aoi$GEO_NAME)
+  #add to the big dataframe
+  nhood_canopy_lu <- bind_rows(nhood_canopy_lu, cur_canopy)
+}
+
+#post-processing
+nhood_canopy_lu <- nhood_canopy_lu %>% 
+  select(-Water) %>% 
+  mutate(across(Agriculture:Woodlands, round)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+#delete any columns with only NA values
+nhood_canopy_lu <- nhood_canopy_lu[, colSums(is.na(nhood_canopy_lu)) != nrow(nhood_canopy_lu)]
+
+  
+#calculate the % of total canopy on each land use category for ctu
+
+#create ctu group canopy lu dataframe
+ctu_canopy_lu <- data.frame(matrix(nrow = 0, ncol=17))
+colnames(ctu_canopy_lu) = c("GEO_NAME", unlist(unique(lui$LANDUSE_CA)))
+ctu_canopy_lu$GEO_NAME = as.character(ctu_canopy_lu$GEO_NAME)
+
+ctu_geo_proj <- st_transform(ctu_geo, 4269)
+
+for (i in 1:nrow(ctu_geo_proj)) {
+  print(paste(i, "/", nrow(ctu_geo_proj)))
+  #grab the vector data for the area
+  aoi <- ctu_geo_proj[i,]
+  #mask the tree and lui rasters to the correct area
+  tree_mask_crop <- crop(tree_mask, aoi, mask=TRUE)
+  lui_crop <- crop(lui, aoi, mask=TRUE)
+  
+  #find the amount of canopy on each type of land
+  cur_canopy <- zonal(tree_mask_crop, lui_crop, fun="sum", na.rm=TRUE)
+  #Subtract any canopy on water (due to sentinel 10m resolution) from the total %s calculated
+  if(length(filter(cur_canopy, LANDUSE_CA == 'Water')$trees) != 0) {
+    total <- sum(cur_canopy$trees) - filter(cur_canopy, LANDUSE_CA == 'Water')$trees
+  } else {
+    total <- sum(cur_canopy$trees)
+  }
+  
+  cur_canopy <- cur_canopy %>%
+    mutate(perc = trees/total*100) %>%
+    select(-trees) %>%
+    spread(LANDUSE_CA, perc) %>%
+    mutate(GEO_NAME = aoi$GEO_NAME)
+  #add to the big dataframe
+  ctu_canopy_lu <- bind_rows(ctu_canopy_lu, cur_canopy)
+}
+
+#post-processing
+ctu_canopy_lu <- ctu_canopy_lu %>% 
+  select(-Water) %>%
+  mutate(across(Agriculture:Woodlands, round)) %>% 
+  mutate(across(Agriculture:Woodlands, ~ case_when(.x < 5 ~ NA, .x > 5 ~ .x)))
+  #delete any columns with only NA values
+ctu_canopy_lu <- ctu_canopy_lu[, colSums(is.na(ctu_canopy_lu)) != nrow(ctu_canopy_lu)]
+  
+  
+ 
+save(bg_canopy_lu, ctu_canopy_lu, nhood_canopy_lu, file = paste0(here::here(), "/data-raw/landuse_data.rda"))
+
+plant_opp <- zonal(opp_map, r, fun="sum", na.rm=TRUE) %>% 
+  arrange(desc(focal_sum)) %>%
+  drop_na() %>% 
+  mutate(perc = round((focal_sum*100/(sum(plant_opp$focal_sum)*100))*100)) %>% 
+  filter(perc >= 5)
+
+
+a <- bg_canopy_lu[70,] %>% 
+  pivot_longer(Agriculture:Woodlands, names_to = "class") %>% 
+  drop_na() %>% 
+  arrange(value) %>%
+  mutate(class=factor(class, levels=class))   # This trick update the factor levels
+
+  # Plot
+ggplot(a, aes(x=class, y=value)) +
+  geom_point() + 
+  geom_segment( aes(x=class, xend=class, y=0, yend=value)) +
+  coord_flip()
+
+#replace with labels
+levels(opp_map) <- data.frame(id=1:3, cover=c("Low Canopy", "Moderate Canopy", "High Canopy"))
+is.factor(opp_map)
+
+#visualize
+plot(aoi$geometry)
+plot(opp_map, col=rev(grDevices::hcl.colors(3, "viridis")), add=TRUE)
+
+#calculate some stats
+total <- st_area(aoi)
+low_perc <- sum(opp_map[opp_map$cover == "Low Canopy"])*100
+mod_perc <- sum(opp_map[opp_map$cover == "Moderate Canopy"])*100
+high_perc <- sum(opp_map[opp_map$cover == "High Canopy"])*100
+print(paste0("total planting opportunities: ", round(sum(low_perc, mod_perc, high_perc)/total*100, 2), "%"))
+print(paste0("low: ", round(low_perc/total*100, 2), "%"))
+print(paste0("moderate: ", round(mod_perc/total*100, 2), "%"))
+print(paste0("high: ", round(high_perc/total*100, 2), "%"))
+
+```
+
+```{r}
+df <- ctu_canopy_lu[27,] %>% 
+  pivot_longer(Agriculture:Woodlands, names_to = "class") %>% 
+  drop_na() %>% 
+  arrange(value) %>%
+  mutate(class=factor(class, levels=class))   # This trick update the factor levels
+
+        ggplot(df, aes(x=class, y=value)) +
+        geom_segment( aes(x=class, xend=class, y=0, yend=value)) +
+        geom_point(color=councilR::colors$cdGreen, stroke=3) +
+        coord_flip() +
+        councilR::theme_council() +
+        theme(
+            panel.grid.minor = element_blank(),
+            panel.grid.major = element_blank(),
+            strip.placement = "outside",
+            axis.title.y = element_text(
+              angle = 90,
+              vjust = 3
+            ),
+            plot.margin = margin(7, 7, 7, 7),
+            axis.line = element_line(),
+            axis.ticks = element_line(),
+            axis.text.y = element_text(vjust = .5, hjust = 1, size=10),
+            plot.caption = element_text(
+              size = rel(1),
+              colour = "grey30",
+              vjust = -2
+            )
+          ) +
+        labs(
+            x = "Land use category", y = "Percentage canopy",
+            caption = # expression(italic(
+              "Source: Analysis of Sentinel-2 satellite imagery (2021)\nand Dane County land use inventory (2020)" # ))
+          ) 
+```
+
+
+
+
+
+```{r}
+lui <- st_read(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/LUI_2020_EXPORT_for_CARPC.gdb"))
+#maybe I should just say where current canopy & opportunities are on the primary land use categories instead of doing a more complex catagorization...
+st_write(lui, paste0(here::here(), "/data-raw/LUI_2020_Dane_County/LUI_2020_EXPORT_for_CARPC.csv"), layer_options = "GEOMETRY=AS_WKT")
+#don't use: water
+
+#not sure: communication/utilites, open land
+
+#recreation (subcategory = public)
+public_rec <- filter(lui, grepl('Way', LANDUSE_SUBCATEGORY))
+#residential, agriculture farm buildings (subcategory)
+residential <- filter(lui, LANDUSE_CATEGORY == 'Residential')
+#commercial, industrial, recreation (subcategory = private), all agriculture != subcategory 'agriculture farm buildings' 
+private_nonres <- filter(lui, LANDUSE_CATEGORY == 'Commercial' | 'Industrial')
+#school land as own variable?
+
+                                                                 
+                                             
+#"Institutional/Governmental" "Woodlands"                  "Mineral Extraction"        
+#[13] "Vacant Subdivided Land"     "Fallow Farm Field"          "Cemetery"                   "Underconstruction"  
 
 ```
 
