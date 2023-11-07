@@ -1,7 +1,9 @@
 README
 ================
-##Dane County, WI
+## Dane County, WI
+
 Liz Levy
+
 07 November 2023
 
 A version of Growing Shade for Dane County, Wisconsin: https://capital-area-rpc.shinyapps.io/growing_shade-main/
