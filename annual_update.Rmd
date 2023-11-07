@@ -1,0 +1,1140 @@
+---
+title: "Update Script"
+author: "Liz Levy"
+date: "2023-09-18"
+output: html_document
+---
+# Introduction
+
+This script should be run annually every January or February to update the Dane County Growing Shade website. Growing Shade relies on multiple external data sets which are updated and released at different times of the year. To simplify things, it's easier to just perform one annual update. However, you can also use this script to update just one or two data sets.
+
+The data set that is released the latest is USDA’s NASS CDL, which is required to separated canopy from cropland. The most recent 2022 layer was released on January 30, 2023, so it is expected that future releases will also be in late January. 
+
+Note that this script is for updates, not for building the Growing Shade site from scratch. Much of the code is similar to the 01tutorial, 02geography, and 03remotesensing script, but it relies on files that have already been produced/downloaded from running these scripts.
+
+*Before running this script, check if the new CDL layer has been released here*:  https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php
+
+Run the chunk below to load in all the required libraries.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = F, message = F, warning = F,
+  cache = F, progress = F
+)
+
+library(dplyr)
+library(tidyr)
+library(readr)
+library(stringr)
+library(tibble)
+library(ggplot2)
+library(tigris)
+library(sf)
+library(tidycensus)
+library(ggbeeswarm)
+library(RSocrata)
+library(here)
+library(arcpullr)
+library(terra)
+```
+
+# Set Parameters
+
+These data sets are updated and released annually (at minimum). If you don't want to include the newest version of a data set, set its parameter to FALSE - this is useful if you are adding in updated information outside of the normal annual update. 
+
+```{r set-parameters-annual}
+
+american_community_survey <- FALSE
+places_health_data <- FALSE
+cities_towns_unincorporated <- TRUE
+neighborhoods <- FALSE
+canopy <- FALSE
+NDVI <- FALSE
+primary_floodplains <- FALSE #TODO - is it annual?
+ejscreen <- FALSE
+```
+
+The decennial census is updated every 10 years. The next release is expected in *April of 2030*. You can check on the status here...
+
+The DC landuse classification updated every ? years. The next release is expected in... You can check on the status here...
+
+The temperature parameter refers to the average land surface temperature during a heat wave. The data comes from three heat waves: 2012-07-01 to 2012-07-07, 2016-07-21 to 2016-07-24, and 2023-07-25 to 2023-07-28. You may wish to occasionally update this data to include more recent data.
+
+TODO - if decennial census is new, so new block groups, does that mean everything needs to be reprocessed? I think so... probably add in an override
+
+```{r set-parameters-intermittent}
+
+decennial_census <- FALSE
+landuse <- FALSE
+temperature <- TRUE
+```
+
+
+A few more parameters. These geography parameters don't need to be changed unless you're running the script for a different region than Dane County.
+```{r set-parameters-other}
+#What year is the new data from?
+update_year <- 2023
+
+#geography parameters
+state <- c("WI")
+county <- c("Dane")
+```
+
+
+Simply go through the rest of the script step by step, following any instructions then running each code chunk.
+
+# Decennial Census
+
+The decennial census data is automatically downloaded.
+
+You may need an API key from Census:
+
+-   [Request an api key](https://api.census.gov/data/key_signup.html)
+-   Enter in the console: `usethis::edit_r_environ()`
+-   When the `.Renviron` file comes up in the editor, type: `CENSUS_KEY="KEY GOES HERE, INSIDE QUOTES"`
+-   Save and close the `.Renviron` file.
+-   Restart R.
+
+TODO - put something in about this, some kind of toggle like in tutorial script? - Race variables come from the decennial 2020 census. Currently, the decennial census data is preferred over ACS data because it is a population count rather than a sample and because ACS data uses the average of 5 years (so starting with the ACS 2021-2025 data, it may be logical to switch over to using the ACS data instead
+
+TODO - add code to download current blockgroup shapefile if decennial has been updated, along with reprocessing the historic data
+
+TODO - deal with potentially needing to download a new crosswalk between old and new blockgroups
+
+```{r decennial-census}
+
+if (decennial_census == TRUE) {
+
+  census_api_key(Sys.getenv("CENSUS_KEY"))
+
+  decennial_var <- c(
+    "P2_005N", # white nh
+    "P2_006N", # black nh
+    "P2_007N", # amin nh
+    "P2_008N", # asian nh
+    "P2_009N", # hawaiian pi nh
+    "P2_010N", # some other nh
+    "P2_011N", # 2+ nh
+    "P2_002N", # hispanic
+
+    "H1_001N" # total housing units
+  )
+
+  decennial_data <- get_decennial(
+    geography = "block group",
+    variables = decennial_var,
+    summary_var = "P1_001N",
+    year = year,
+    state = state,
+    county = county,
+    geometry = F
+  ) %>%
+    pivot_wider(names_from = variable, values_from = value) %>%
+    # process data
+    mutate(across(starts_with("P2"), ~ .x / summary_value)) %>%
+    rename(
+      whitenh = P2_005N,
+      pblacknh = P2_006N,
+      pamindnh = P2_007N,
+      phisppop = P2_002N,
+      housing_units = H1_001N
+    ) %>%
+    mutate(
+      pothmultnh = (P2_010N + P2_011N),
+      pasiannh = (P2_008N + P2_009N),
+      pbipoc = 1 - whitenh,
+      population_count = summary_value
+    ) %>%
+    select(-c(starts_with("P2"), summary_value)) %>%
+    # get a nice name for tracts
+    separate(NAME, into = c("bg", "tract", "county", "state"), sep = ",") %>%
+    mutate(fancyname = paste0(county, " tract ", str_remove(tract, "Census Tract "), ", block group ", str_remove(bg, "Block Group "))) %>%
+    select(-bg, -tract, -county, -state)
+
+
+  decennial_metadata <- get_decennial(
+    geography = "county",
+    variables = decennial_var,
+    summary_var = "P1_001N",
+    year = year,
+    state = state,
+    county = county,
+    geometry = F
+  ) %>%
+    add_column(geo = "region averages") %>%
+    group_by(geo, variable) %>%
+    summarise(
+      value = sum(value),
+      summary_value = sum(summary_value)
+    ) %>%
+    pivot_wider(names_from = variable, values_from = value) %>%
+    mutate(across(starts_with("P2"), ~ .x / summary_value)) %>%
+    rename(
+      whitenh = P2_005N,
+      pblacknh = P2_006N,
+      pamindnh = P2_007N,
+      phisppop = P2_002N,
+      housing_units = H1_001N
+    ) %>%
+    mutate(
+      pothmultnh = (P2_010N + P2_011N),
+      pasiannh = (P2_008N + P2_009N),
+      pbipoc = 1 - whitenh,
+      population_count = summary_value
+    ) %>%
+    select(-c(starts_with("P2"), summary_value, geo))
+
+  save(decennial_data, decennial_metadata, file = paste0(here::here(), "/data-raw/decennial_data.rda"))
+} else {
+  load(paste0(here::here(), "/data-raw/decennial_data.rda"))
+}
+```
+
+
+# American Community Survey
+
+The ACS data is automatically downloaded. If you haven't already entered the API information, you may need to follow the API instructions for the decennial census.
+
+```{r acs}
+if (american_community_survey == TRUE) {
+  census_api_key(Sys.getenv("CENSUS_KEY"))
+
+  v20 <- load_variables(year, "acs5", cache = TRUE)
+  # View(v20 %>% filter(geography == "tract"))
+  # View(v20 %>% filter(geography == "block group"))
+  #  you may need to access the table shells: https://www.census.gov/programs-surveys/acs/technical-documentation/table-shells.html
+  #  census reporter topics are also very useful! https://censusreporter.org/topics/
+
+  acs_variables <- c(
+    "B01001_001", # poptotal
+    paste0("B01001_00", c(3:6)), # under18 m
+    paste0("B01001_0", c(27:30)), # under18 f
+    paste0("B01001_0", c(20:25, 44:49)), # over 65m, f
+    "B19013_001", # median hh income
+    "B25003_001", # tenure_total
+    "B25003_002", # tenure owners
+    "B23025_001", # employment status denominator
+    "B23025_007", # unemployed
+    paste0("C17002_00", c(1:6)) # poverty status
+  )
+
+  acs_fxn <- function(.geo, .process = NULL, .extra_vars = NULL) {
+    step1 <- get_acs(
+      geography = .geo,
+      variables = if (is.null(.extra_vars)) {
+        acs_variables
+      } else {
+        .extra_vars
+      }, # c(acs_variables, .extra_vars),
+      survey = "acs5",
+      state = state,
+      county = county,
+      year = year
+    ) %>%
+      select(-moe, -NAME) %>%
+      pivot_wider(names_from = variable, values_from = estimate)
+
+    # process to useable forms of the data
+    if (is.null(.process)) {
+      step2 <- step1 %>%
+        mutate(
+          under18 = rowSums(across(c(
+            paste0("B01001_00", c(3:6)), # under18 m
+            paste0("B01001_0", c(27:30)) # under18 f
+          ), na.rm = T)),
+          over65 = rowSums(across(c(
+            paste0("B01001_0", c(20:25, 44:49)) # over 65m, f
+          ), na.rm = T))
+        ) %>%
+        mutate(across(c(under18, over65), ~ .x / B01001_001), # , .names = "{.col}_percent"),
+          sens_age = under18 + over65,
+          pownhome = B25003_002 / B25003_001,
+          pwk_nowork = B23025_007 / B23025_001,
+          ppov185 = (C17002_002 + C17002_003 + C17002_004 + C17002_005 + C17002_006) / C17002_001
+        ) %>%
+        rename(hhincome = B19013_001) %>%
+        select(c(GEOID, !starts_with(c("B", "C"))))
+    }
+
+    if (is.null(.process)) {
+      return(step2)
+    } else {
+      return(step1)
+    }
+  }
+
+  acs_blockgroups <- acs_fxn(.geo = "block group") %>%
+    mutate(tract_id = substr(GEOID, start = 1, stop = 11))
+
+  acs_disability <- acs_fxn(
+    .geo = "tract",
+    .process = "dont complete",
+    .extra_vars = c(paste0("C18108_0", c("01", "05", "09", "13")))
+  ) %>%
+    mutate(nodisability = rowSums(across(c(paste0("C18108_0", c("05", "09", "13")))))) %>%
+    transmute(
+      tract_id = GEOID,
+      pd_any = 1 - (nodisability / C18108_001)
+    )
+
+  acs_tracts <- acs_fxn(.geo = "tract") %>%
+    # .extra_variables = (paste0("C18108_0", c("01", "05", "09", "13"))))# %>% #disability status; only exists at tract level
+    mutate(across(c(hhincome:ppov185), ~.x, .names = "tr_{.col}")) %>%
+    rename(tract_id = GEOID) %>%
+    select(starts_with("tr")) %>%
+    full_join(acs_disability)
+
+  ###
+  # also want to get regional averages for metadata
+  ###
+  acs_metadata <- get_acs(
+    geography = "county",
+    variables = c(acs_variables, paste0("C18108_0", c("01", "05", "09", "13"))),
+    survey = "acs5",
+    state = state,
+    county = county,
+    year = year
+  ) %>%
+    add_column(geo = "region averages") %>%
+    group_by(geo, variable) %>%
+    summarise(estimate = sum(estimate)) %>%
+    pivot_wider(names_from = variable, values_from = estimate) %>%
+    # process to useable forms of the data
+    mutate(
+      under18 = rowSums(across(c(
+        paste0("B01001_00", c(3:6)), # under18 m
+        paste0("B01001_0", c(27:30)) # under18 f
+      ), na.rm = T)),
+      over65 = rowSums(across(c(
+        paste0("B01001_0", c(20:25, 44:49)) # over 65m, f
+      ), na.rm = T)),
+      nodisability = rowSums(across(c(paste0("C18108_0", c("05", "09", "13")))))
+    ) %>%
+    mutate(across(c(under18, over65), ~ .x / B01001_001), # , .names = "{.col}_percent"),
+      sens_age = under18 + over65,
+      pownhome = B25003_002 / B25003_001,
+      pwk_nowork = B23025_007 / B23025_001,
+      ppov185 = (C17002_002 + C17002_003 + C17002_004 + C17002_005 + C17002_006) / C17002_001,
+      pd_any = 1 - (nodisability / C18108_001)
+    ) %>%
+    rename(hhincome = B19013_001) %>%
+    select(c(geo, !starts_with(c("B", "C")), -nodisability))
+
+  ###
+  # save files
+  ###
+
+  save(acs_blockgroups, acs_tracts, acs_metadata, file = paste0(here::here(), "/data-raw/acs_data.rda"))
+} else {
+  load(paste0(here::here(), "/data-raw/acs_data.rda"))
+}
+```
+
+
+## PLACES health data
+
+Health metrics come from [PLACES: Local Data for Better Health, Census Tract Data](https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-Census-Tract-D/cwsq-ngmh). I am not aware that there is a way to use a "health_year" parameter to get a specific timestamp of the data, so please just double check that the most recent data is being used! 
+
+```{r PLACES}
+if (places_health_data == TRUE) {
+  ##########
+# CDC health data
+#########
+# variable options are documented here: https://www.cdc.gov/places/measure-definitions/index.html
+
+  raw_health <- read.socrata(
+    # "https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?$where=stateabbr in('MN', 'WI')",
+    #paste0("https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?$where=stateabbr in('", state, "')"),
+    paste0("https://chronicdata.cdc.gov/resource/cwsq-ngmh.json?stateabbr=", state, "&countyname=", county),
+    app_token = Sys.getenv("CDC_KEY"),
+    email = Sys.getenv("CDC_EMAIL"),
+    password = Sys.getenv("CDC_PASSWORD")
+  ) %>%
+    # get the columns of interest. there are more variables as an fyi though!
+    # names(bg_health)
+    # levels(as.factor(bg_health$measure))
+    filter(measure %in% c(
+      "Current asthma among adults aged >=18 years",
+      "Chronic obstructive pulmonary disease among adults aged >=18 years",
+      "Mental health not good for >=14 days among adults aged >=18 years",
+      "Physical health not good for >=14 days among adults aged >=18 years"
+    )) %>%
+    dplyr::select(locationname, measureid, data_value) %>%
+    mutate(data_value = as.numeric(data_value) / 100) %>% # change to fraction
+    pivot_wider(names_from = measureid, values_from = data_value)
+
+  fips <- tigris::lookup_code(state = state) %>%
+    stringr::str_split("'", simplify = T)
+
+  crosswalk <- read_csv(paste0(here::here(), "/data-raw/nhgis_bg2020_tr2010_", fips[, 2], ".csv"),
+    col_types = c(
+      "tr2010ge" = "c",
+      "bg2020ge" = "c"
+    )
+  ) %>%
+    select(
+      tr2010ge, # census geoid for 2010
+      bg2020ge, # census geoid for 2020
+      wt_pop
+    ) %>% # use weighted population crosswalk
+    group_by(bg2020ge) %>%
+    slice(which.max(wt_pop)) %>% # just get the crosswalk for where most people live. it's oversimplified, but pretty decent esp since block groups generally nest nicely into tracts across census geographies
+    select(-wt_pop)
+
+
+  ## translate health data into 2020 geographies
+  health_data <- raw_health %>%
+    full_join(crosswalk, by = c("locationname" = "tr2010ge")) %>%
+    rename(GEOID = bg2020ge) %>%
+    select(-locationname)
+
+  save(file = paste0(here::here(), "/data-raw/health_data.rda"), health_data)
+} else {
+  load(paste0(here::here(), "/data-raw/health_data.rda"))
+}
+```
+
+#ejscreen
+
+Although the original 01_tutorial code had this as an automated download, I was unable to get it to work. I suggest downloading manually from here: https://gaftp.epa.gov/EJSCREEN/. There will likely be several downloads available - you want the one with 'tracts' in the name.
+
+The names look different now then when I downloaded... also I was using 2023 info, not sure if I should've since we were partway through the year?
+
+```{r ejscreen}
+
+if (ejscreen == TRUE) {
+  #uncomment below to try and download automatically
+  # temp <- tempfile()
+  # temp2 <- tempfile()
+  # download.file(
+  #   #"https://gaftp.epa.gov/EJSCREEN/2021/EJSCREEN_2021_USPR_Tracts.csv.zip",
+  #   "https://gaftp.epa.gov/EJSCREEN/2023/EJSCREEN_2023_Tracts_with_AS_CNMI_GU_VI.csv.zip",
+  #   destfile = temp
+  # )
+  # unzip(zipfile = temp, exdir = temp2)
+  # list.files(temp2)
+
+  #ejscreen <- read_csv(paste0(temp2, pattern = "/EJSCREEN_2023_Tracts_with_AS_CNMI_GU_VI.csv"),
+  ejscreen <- read_csv("data-raw/EJSCREEN_2023_Tracts_with_AS_CNMI_GU_VI.csv",
+    col_select = c(ST_ABBREV, CANCER, ID)
+  ) %>%
+    filter(ST_ABBREV == state)
+
+  # #ejscreen is still using 2010 geographies
+  # ejscreen %>% left_join(bg_geo %>%
+  #                          mutate(ID = substr(GEOID, start = 1, stop = 11))) %>%
+  #   st_as_sf() %>%
+  #   ggplot() +
+  #   geom_sf(aes(fill = CANCER))
+
+  files <- list.files(temp2, full.names = T)
+  file.remove(files)
+
+  ## translate into 2020 geographies
+  cancer_data <- ejscreen %>%
+    full_join(crosswalk, by = c("ID" = "tr2010ge")) %>%
+    rename(bg_id = bg2020ge) %>%
+    select(bg_id, CANCER) %>%
+    mutate(CANCER = if_else(is.na(CANCER), min(CANCER, na.rm = T), CANCER)) %>% # don't let there be NAs, fill with the minimum value
+    # filter(!is.na(bg_id)) %>%
+    rename(env_cancer = CANCER)
+
+  save(file = paste0(here::here(), "/data-raw/cancer_data.rda"), cancer_data)
+} else {
+  load(paste0(here::here(), "/data-raw/cancer_data.rda"))
+}
+
+```
+
+#block groups
+
+Should this only happen if the decennial census is new? Otherwise, just use the already downloaded copy I think... then save over if not.
+Also redo the historical stuff & temperature here if decennial_census = TRUE?
+
+TODO - exclude block groups for mendota and monona here instead of cutting out individually in a bunch of places
+```{r blockgroups}
+if (decennial_census == TRUE) {
+  bg_geo <- block_groups(
+    state = state,
+    county = county,
+    year = year
+  )
+  
+  #save over previous blockgroup shapefile 
+  #TODO should save over bg, saving seperate file right now for testing
+  st_write(ctu_geo, paste0(here::here(), "/data-raw/gee_canopy_data/blockgroups/bg2.shp"), append = FALSE)
+}else{
+  bg_geo <- read_sf(paste0(here::here(), "/data-raw/gee_canopy_data/blockgroups/bg.shp")) %>% 
+     filter(GEOID != "550259917030" & GEOID != "550259917020")
+}
+```
+
+# Cities, Towns, Unincorporated
+
+Automated download and processing of the 'Municipal Boundaries' shapefile. Can also be manually downloaded here: https://gis-countyofdane.opendata.arcgis.com/pages/boundaries
+
+```{r ctu}
+if (cities_towns_unincorporated == TRUE) {
+
+  ctu_geo <-
+    #download from the DC rest endpoint
+    get_spatial_layer(
+      "https://dcimapapps.countyofdane.com/arcgissrv/rest/services/Administrative/WardBoundaries/MapServer/0"
+    ) %>%
+    #merge geometries with same name
+    group_by(NAME) %>% 
+    summarize(geometry = st_union(geoms)) %>%
+    #simplify names
+    mutate(short = strsplit(NAME, " of ")) %>%
+    unnest_wider(short, names_sep = "_") %>%
+    group_by(short_2) %>%
+    mutate(n = n()) %>%
+    #specify the type of municipality for any duplicate names
+    mutate(NAME = case_when(n > 1 ~ paste0(short_2, " (", short_1, ")"),
+                            TRUE ~ short_2)) %>%
+    ungroup() %>%
+    arrange(NAME) %>%
+    rename(GEO_NAME = NAME) %>%
+    select(GEO_NAME, geometry) %>%
+    #convert back to a sf object
+    st_as_sf("/data-raw/gee_canopy_data/cities/ctu.shp")
+  
+  #TODO the projection info is different than what I originally saved, is this a problem?
+  #TODO should save over ctu, saving seperate file right now for testing
+  #save over previous ctu shapefile 
+  st_write(ctu_geo, paste0(here::here(), "/data-raw/gee_canopy_data/cities/ctu2.shp"), append = FALSE)
+} else {
+  ctu_geo <- read_sf(paste0(here::here(), "/data-raw/gee_canopy_data/cities/ctu.shp"))
+}
+
+```
+
+
+# Neighborhoods
+
+TODO - Matt had done some work in GIS to clean up overlapping polygons -- need to figure out how to do that programatically and add in
+
+```{r nhood}
+
+if (neighborhoods == TRUE) {
+  nhood_geo <-
+    #download from the Madison rest endpoint
+    get_spatial_layer(
+      "https://maps.cityofmadison.com/arcgis/rest/services/Public/OPEN_DATA/MapServer/12/"
+    ) %>%
+    rename(GEO_NAME = NEIGHB_NAME, geometry = geoms) %>%
+    mutate(city = "Madison") %>% 
+    select(GEO_NAME, city, geometry)
+  
+  
+  #shorten the neighborhood names by removing suffixes that are not necessary for our purposes
+  shorten_name <- function(x) { 
+    find_i <- gregexpr('Neighborhood Association|Condominium Association|Condominum Association|Condominium|Homeowners Association|Community Association|Home Owners Association|Homeowners Assoc|Neighborhood As|Owners Assoc|Owners Association|Association', x)[[1]][1]
+    if (find_i > 0) {
+      return (substr(x, 1, find_i-2))
+    } else {
+      return(x)
+    }
+  }
+  
+  nhood_geo$GEO_NAME <- sapply(nhood_geo$GEO_NAME, shorten_name, USE.NAMES = FALSE)
+  
+  #TODO the projection info is different than what I originally saved, is this a problem?
+  #TODO should save over nhood, saving seperate file right now for testing
+  #save over previous nhood shapefile 
+  st_write(nhood_geo, paste0(here::here(), "/data-raw/gee_canopy_data/neighborhoods/nhood2.shp"), append = FALSE)
+  
+} else {
+  nhood_geo <- read_sf(paste0(here::here(), "/data-raw/gee_canopy_data/neighborhoods/nhood.shp"))
+}
+
+```
+
+# Crosswalk
+
+```{r ctu-nhood-crosswalk}
+
+if (decennial_census == TRUE | cities_towns_unincorporated == TRUE | neighborhoods == TRUE) {
+# fxns to make easy -----
+# find crosswalks
+find_crosswalks <- function(x) {
+  crosswalk <- x %>%
+  st_transform(26915) %>%
+  #st_buffer(-150) %>% #buffer the perimeter of the geography - this line is causing issues with neighborhoods that are smaller than the buffer, not sure why the buffer is included in the first place
+  st_intersection(bg_geo %>% 
+                    dplyr::select(GEOID) %>%
+                    rename(bg_id = GEOID) %>%
+                    st_transform(26915)) %>%
+  st_drop_geometry() %>% 
+  #filter out the two block groups that make up lake mendota and monona
+  filter(bg_id != "550259917030" & bg_id != "550259917020")
+    
+  return(crosswalk)
+}
+
+ctu_crosswalk <- find_crosswalks(ctu_geo)
+
+nhood_crosswalk <- find_crosswalks(nhood_geo)
+
+wide_ctu_crosswalk <- ctu_crosswalk %>%
+    aggregate(GEO_NAME ~ bg_id, paste, collapse = ", ") %>%
+  rename(jurisdiction = GEO_NAME)
+
+  save(ctu_crosswalk, nhood_crosswalk, wide_ctu_crosswalk, file = paste0(here::here(), "/data-raw/geography_data.rda"))
+} else {
+  load(paste0(here::here(), "/data-raw/geography_data.rda"))
+}
+
+```
+
+
+
+# Primary floodplains
+
+Can this download be automated or is it manual?
+```{r floodplains}
+if (primary_floodplains == TRUE) {
+  
+bg <- st_read(paste0(here::here(), "/data-raw/gee_canopy_data/blockgroups/bg.shp")) %>% 
+  arrange(GEOID) %>% 
+  filter(GEOID != "550259917030" & GEOID != "550259917020")
+bg <- vect(bg)
+
+#load the temperature info from the previously saved data
+avgTemp <- read.csv(paste0(here::here(), "/data-raw/CLIMATE_BG55.csv")) %>% 
+  arrange(BG55) %>% 
+  select(AVG_TEMP)
+
+#primary flood plain
+flood <- vect(paste0(here::here(), "/data-raw/fema_floodplain/2023_DC_FEMA_floodplain.shp"))
+#reproject - may take a few minutes to run
+flood <- project(flood, bg)
+
+clim_vul <- data.frame(matrix(nrow = 351, ncol = 3))
+columns= c("BG55", "AVG_TEMP", "PRIM_FLOOD")
+colnames(clim_vul) = columns
+
+clim_vul$BG55 <- bg$GEOID
+clim_vul$AVG_TEMP <- avgTemp$AVG_TEMP
+
+#calculate the percentage of land susceptible to flooding withing each block group
+for (i in 1:nrow(bg)) {
+  clip <- crop(flood, bg[i,])
+  perc <- expanse(clip)/expanse(bg[i,])
+  if (length(perc > 0)) {
+    clim_vul[i,3] <- perc
+  } else {
+    clim_vul[i,3] <- 0
+  }
+}
+
+#write csv
+write.csv(clim_vul, paste0(here::here(), "/data-raw/CLIMATE_BG55.csv"), row.names = FALSE)
+}
+
+```
+
+#Temperature
+
+```{r temperature}
+if (temperature == TRUE) {
+  # Block group geometries are downloaded in 01_tutorial.Rmd
+#TODO - am I including lake areas in the temperature?
+bg <- vect(arrange(bg_geo, GEOID))
+#the average land surface temperature
+avgTemp <- rast(paste0(here::here(), "/data-raw/LST_2021_summer_max.tif"))
+#convert temperatures from Kelvin to Fahrenheit
+avgTemp <- project(avgTemp, bg)
+avgTemp$tempF <- (avgTemp$LST - 273.15) * 9/5 + 32
+
+lui <- vect(paste0(here::here(), "/data-raw/gee_canopy_data/water/LUI_2020_Dane_County_Water.shp"))
+lui <- project(lui, bg)
+lakes <- lui[grepl('Lake', lui$PLACE_DESC)]
+#lake mendota and monona area their own block groups and already removed, so don't need to include them here
+lakes <- lakes[lakes$PLACE_DESC != "Lake Mendota" & lakes$PLACE_DESC != "Lake Monona"]
+
+#mask out water - the low resolution makes this not perfect by any means, but we're averaging within block groups so I think this is ok
+avgTemp <- mask(avgTemp, lakes, inverse = TRUE, touches = FALSE)
+#calculate the mean temperature within each block group
+bg_temp <- zonal(avgTemp$tempF, bg, "mean", na.rm=TRUE)
+
+#load the flood info from the previously saved data
+flood <- read.csv(paste0(here::here(), "/data-raw/CLIMATE_BG55.csv")) %>% 
+  arrange(BG55) %>%
+  filter(BG55 != "550259917030" & BG55 != "550259917020") %>% 
+  select(PRIM_FLOOD)
+
+
+clim_vul <- data.frame(matrix(nrow = 351, ncol = 3))
+columns= c("BG55", "AVG_TEMP", "PRIM_FLOOD")
+colnames(clim_vul) = columns
+
+clim_vul$BG55 <- bg$GEOID
+clim_vul$AVG_TEMP <- bg_temp$tempF
+clim_vul$PRIM_FLOOD <- flood$PRIM_FLOOD
+
+#write csv
+write.csv(clim_vul, paste0(here::here(), "/data-raw/CLIMATE_BG55.csv"), row.names = FALSE)
+}
+```
+
+
+# Canopy
+
+The rest of the update relies on canopy information derived using Google Earth Engine, so you'll need to do a few things outside of this script.
+
+1. If you don't already have access to GEE, use these instructions: https://developers.google.com/earth-engine/guides/access#individual-signup
+
+TODO - can I share the project with the carpc IT account to make things easier? Might need to be a google account, worth looking into.
+
+2. Go to this script: https://code.earthengine.google.com/d34583e1d03f11b2c02ec7a3a0e2592d
+
+3. You will need to replace imported assets with versions you have uploaded locally. The files are located in individual folders in data-raw/gee_canopy_data and share the import variable names. For more details on importing assets see https://developers.google.com/earth-engine/guides/asset_manager.
+
+TODO - again, can I just share these with the IT account somehow?
+
+
+4. Follow the instructions at the top of the script. You should run the script 3 times and download a data set for each geography. Save the resulting datasets in the data-raw folder.
+
+5. In the code below, change the filepaths to refer to the new data.
+
+
+
+```{r canopy}
+if (canopy == TRUE) {
+  
+# The files where the canopy data is stored - change these when updating to the names of the files downloaded from GEE
+  bg_canopy <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_blockgroups_year2021.csv")) %>% 
+  arrange(GEOID)
+  
+  ctu_list_raw <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_ctu_year2021.csv")) %>% 
+  arrange(GEO_NAME)
+  
+  nhood_list <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_nhood_year2021.csv")) %>% 
+  arrange(GEO_NAME)
+  
+#Process for block groups
+
+#just using the same coefficient for the twin cities for now, will potentially calculate for Madison later
+calib_coeff <- .88
+
+
+bg_geo <- arrange(bg_geo, GEOID)
+bg_canopy$ALAND <- bg_geo$ALAND
+
+bg <- vect(bg_geo)
+#calculate total area of all block groups in meters
+total_area <- expanse(bg,"m")
+
+bg_canopy <- bg_canopy %>% 
+  rename('trees' = '1', 'treeless' = '0') %>% 
+  #convert square acres (GEE output) to meters
+  mutate(trees = trees*4046.856422,
+         treeless = total_area - trees,
+         treeless = if_else(ALAND == 0, 0, as.numeric(treeless)),
+         trees = if_else(ALAND == 0, 0, as.numeric(trees)),
+         canopy_percent = trees / (trees + treeless) * calib_coeff, 
+         canopy_percent = if_else(is.na(canopy_percent), 0, canopy_percent)) %>%
+    filter(ALAND != 0) %>% #new 2020 block groups sometimes are only water
+    mutate(avgcanopy = mean(canopy_percent)) %>%
+    select(-ALAND, -trees, -treeless) %>% 
+    rename(bg_id = GEOID) %>%
+    transform(bg_id = as.character(bg_id)) %>% 
+    #filter out the two block groups that make up lake mendota and monona
+    filter(bg_id != "550259917030" & bg_id != "550259917020")
+
+
+#process for neighborhoods
+
+ctu_geo <- st_read(paste0(here::here(), "/data-raw/gee_canopy_data/cities/ctu.shp")) %>% 
+  arrange(GEO_NAME)
+
+ctu <- vect(ctu_geo)
+#calculate total area of all cities in meters
+total_area <- expanse(ctu,"m")
+
+  
+
+ctu_list_raw <- ctu_list_raw %>% 
+  rename('trees' = '1', 'treeless' = '0') %>% 
+  #convert square acres (GEE output) to meters
+  mutate(trees = trees*4046.856422,
+         treeless = total_area - trees,
+         canopy_percent = trees / (trees + treeless) * calib_coeff, 
+         canopy_percent = if_else(is.na(canopy_percent), 0, canopy_percent)) %>%
+    mutate(avgcanopy = mean(canopy_percent)) %>%
+    select(-trees, -treeless) %>%
+  full_join(left_join(ctu_crosswalk, bg_canopy) %>% 
+  group_by(GEO_NAME) %>%
+  summarise(
+    min = round(min(canopy_percent) * 100, 1),
+    max = round(max(canopy_percent) * 100, 1),
+    n_blockgroups = n()
+  )) %>%
+  arrange(GEO_NAME) %>%
+  full_join(ctu_geo) %>%
+  st_as_sf()
+
+
+#neighborhoods
+
+nhood_geo <- st_read(paste0(here::here(), "/data-raw/gee_canopy_data/nhood/nhood.shp")) %>% 
+  arrange(GEO_NAME)
+
+nhood <- vect(nhood_geo)
+#calculate total area of all cities in meters
+total_area <- expanse(nhood,"m")
+
+nhood_list_raw <- nhood_list %>% 
+  rename('trees' = '1', 'treeless' = '0') %>% 
+  #convert square acres (GEE output) to meters
+  mutate(trees = trees*4046.856422,
+         treeless = total_area - trees,
+         canopy_percent = trees / (trees + treeless) * calib_coeff, 
+         canopy_percent = if_else(is.na(canopy_percent), 0, canopy_percent)) %>%
+    mutate(avgcanopy = mean(canopy_percent)) %>%
+    select(-trees, -treeless) %>% 
+  full_join(left_join(nhood_crosswalk, bg_canopy) %>% 
+  group_by(GEO_NAME, city) %>%
+  summarise(
+    min = round(min(canopy_percent) * 100, 1),
+    max = round(max(canopy_percent) * 100, 1),
+    n_blockgroups = n()
+  )) %>%
+  full_join(nhood_geo) %>%
+  st_as_sf()
+
+} else {
+  load(paste0(here::here(), "/data-raw/canopy_data.rda"))
+}
+```
+
+TODO - ndvi and canopy data are saved together in one rda, need to deal with if one is being run and one isn't... unlikely, but the way I set this up makes it possible and I do wanna leave it an option 
+
+write instructions... don't feel like it right now...
+
+# NDVI
+```{r ndvi}
+if (NDVI == TRUE) {
+  ndvi_uncultivated <- 
+  read_csv(paste0(here::here(), "/data-raw/DC_uncultivated_meanNDVI_bg_year2021.csv"),
+                    na = "No data",
+                       col_types = cols(GEOID = "c", `system:index` = "c", Year = 'd',  `.geo` = 'c')) %>%
+  rename(GEOID = GEOID, ndvi_uncultivated = ndvi)
+
+ndvi_allland <- 
+  read_csv(paste0(here::here(), "/data-raw/DC_land_meanNDVI_bg_year2021.csv"),
+                    na = "No data",
+                       col_types = cols(GEOID = "c", `system:index` = "c", Year = 'd',  `.geo` = 'c')) %>%
+  rename(GEOID = GEOID, ndvi_land = ndvi)
+  
+bg_ndvi <- ndvi_uncultivated %>%
+  dplyr::select(GEOID, ndvi_uncultivated) %>%
+  full_join(ndvi_allland %>%
+  dplyr::select(GEOID, ndvi_land)) %>%
+    rename(bg_id = GEOID)
+} else {
+  load(paste0(here::here(), "/data-raw/canopy_data.rda"))
+}
+
+```
+
+
+# Landuse
+
+There's a lot of scratch code in 03_remotesensing for this part, reeeally need to go through and clean it up, not sure which parts to copy in offhand
+```{r landuse}
+if (landuse == TRUE) {
+  
+}
+
+```
+
+#holc data
+
+
+```{r redlining}
+
+#download historical shapefile from https://github.com/americanpanorama/Census_HOLC_Research/tree/main/2020_Census_Tracts, then put in the data-raw folder
+
+#limit to Dane County and redlined areas (grade D)
+#TODO cut out water/non residential areas like they did in original code? Not much is included, so I don't know if this is necessary
+redline_raw <- st_read("data-raw/holc_census_tracts/holc_census_tracts.shp") %>% 
+  filter(state == "WI" & county_cod == "025" & holc_grade == "D") %>% 
+  sf::st_transform(4326) %>% 
+  filter(geoid != "550259917030" & geoid != "550259917020")
+  
+bg <- vect(bg_geo)
+
+holc <- vect(redline_raw) %>% 
+  project(bg)
+
+holc_data <- data.frame(matrix(nrow = 351, ncol = 2))
+columns= c("bg_id", "holc_pred")
+colnames(holc_data) = columns
+
+holc_data$bg_id <- bg$GEOID
+
+#calculate the percentage of redlined area within each block group
+for (i in 1:nrow(bg)) {
+  clip <- crop(holc, bg[i,])
+  perc <- round(sum(expanse(clip))/expanse(bg[i,]), digits = 3)
+  if (length(perc > 0)) {
+    holc_data[i,2] <- perc
+  } else {
+    holc_data[i,2] <- 0
+  }
+}
+
+write.csv(holc_data, paste0(here::here(), "/data-raw/holc2.csv"), row.names = FALSE)
+lui <- vect(paste0(here::here(), "/data-raw/LUI_2020_Dane_County/LUI_2020_Dane_County_Project.shp"))
+lui <- project(lui, bg)
+tst <- crop(lui, holc)
+a <- tst[tst$GENERALIZE == "RESIDENTIAL"]
+```
+
+# Final processing
+
+Stuff to get the final versions in the data folder
+
+```{r}
+ county_outline <- if (is.null(county)) {
+    tigris::counties(state = state)
+  } else {
+    tigris::counties(state = state) %>%
+      filter(NAME %in% county)
+  }
+```
+
+```{r}
+
+env_data <- read_csv(paste0(here::here(), "/data-raw/CLIMATE_BG55.csv")) %>%
+    transmute(
+      bg_id = BG55,
+      avg_temp = AVG_TEMP,
+      prim_flood = PRIM_FLOOD
+    ) %>% 
+    transform(bg_id = as.character(bg_id)) %>% 
+    #filter out the two block groups that make up lake mendota and monona
+    filter(bg_id != "550259917030" & bg_id != "550259917020")
+
+code_metadata <- read_csv(paste0(here::here(), "/data-raw/metadata.csv"))
+
+bg_growingshade_main <-
+  # direct-fetching data; exists for all regions/scale-able
+  acs_blockgroups %>%
+  full_join(decennial_data) %>%
+  full_join(health_data) %>%
+  full_join(cancer_data, by = c("GEOID" = "bg_id")) %>%
+  full_join(bg_geo %>% st_drop_geometry() %>% transmute(GEOID = GEOID, land = ALAND)) %>%
+  full_join(acs_tracts) %>%
+  # deal with some non-residential blocks and insufficient data; demographics specific data
+  mutate(across(-c(GEOID, fancyname, tract_id, land, starts_with("tr"), population_count), ~ if_else(population_count == 0, NA_real_, .x)),
+    under18 = if_else(is.nan(under18), tr_under18, under18),
+    over65 = if_else(is.nan(over65), tr_over65, over65),
+    sens_age = if_else(is.nan(sens_age), tr_sens_age, sens_age),
+    pownhome = if_else(is.nan(pownhome), tr_sens_age, pownhome),
+    ppov185 = if_else(is.nan(ppov185), tr_sens_age, ppov185),
+    hhincome = if_else(is.na(hhincome) & population_count > 0, tr_hhincome, hhincome),
+    pwk_nowork = if_else(is.na(pwk_nowork) & population_count > 0, tr_pwk_nowork, pwk_nowork)
+  ) %>%
+  select(!starts_with("tr")) %>%
+  filter(!is.na(fancyname)) %>%
+  # tree canopy data; needs to be prepared separately for different regions
+  full_join(bg_canopy, by = c("GEOID" = "bg_id")) %>%
+  full_join(bg_ndvi, by = c("GEOID" = "bg_id")) %>%
+  # other data; may not apply for other regions
+  full_join(env_data, by = c("GEOID" = "bg_id")) %>% # extreme heat, flood risk
+  full_join(holc_data, by = c("GEOID" = "bg_id")) %>% # redlining
+
+  # start to process the data
+  mutate(
+    inverse_ndvi_uncultivated = ndvi_uncultivated,
+    inverse_ndvi_land = ndvi_land,
+    inverse_canopy = canopy_percent,
+    pop_density = population_count / land * 4045.86,
+    housing_density = housing_units / land * 4045.86
+  ) %>%
+  rename(bg_string = GEOID) %>%
+  # standardize and rescale
+  pivot_longer(names_to = "variable", values_to = "raw_value", -c(bg_string, fancyname)) %>% # end the code after this line if you just want the reshaped data
+  group_by(variable) %>%
+  mutate(
+    MEAN = mean(raw_value, na.rm = T),
+    SD = sd(raw_value, na.rm = T),
+    MIN = min(raw_value, na.rm = T),
+    MAX = max(raw_value, na.rm = T),
+    COUNT = as.numeric(sum(!is.na(raw_value))),
+    z_score = if_else(SD != 0, (raw_value - MEAN) / SD, 0)
+  ) %>%
+  full_join(code_metadata, by = "variable") %>%
+  # create nominal weights
+  mutate(weights_nominal = case_when(
+    interpret_high_value == "high_opportunity" ~ (raw_value - MIN) / (MAX - MIN) * 10,
+    interpret_high_value == "low_opportunity" ~ 10 - (raw_value - MIN) / (MAX - MIN) * 10,
+    TRUE ~ NA_real_
+  )) %>%
+  # Weights Standard Score
+  mutate(weights_scaled = case_when(
+    interpret_high_value == "high_opportunity" ~ pnorm(z_score) * 10,
+    interpret_high_value == "low_opportunity" ~ (10 - pnorm(z_score) * 10),
+    TRUE ~ NA_real_
+  )) %>%
+  # weights rank
+  mutate(weights_rank = case_when(
+    interpret_high_value == "high_opportunity" ~ min_rank(desc(weights_nominal)) / COUNT * 10,
+    interpret_high_value == "low_opportunity" ~ min_rank(desc(weights_nominal)) / COUNT * 10,
+    TRUE ~ NA_real_
+  )) %>%
+  # #rank
+  mutate(overall_rank = case_when(
+    interpret_high_value == "high_opportunity" ~ min_rank(desc(as.numeric(weights_nominal))),
+    interpret_high_value == "low_opportunity" ~ min_rank(desc(as.numeric(weights_nominal)))
+  )) %>%
+  # clean
+  dplyr::select(-MEAN, -SD, -MIN, -MAX) %>%
+  full_join(wide_ctu_crosswalk, by = c("bg_string" = "bg_id")) %>%
+  filter(!is.na(name)) # remove variables which are NOT in the metadata list
+
+demo_metadata <- acs_metadata %>%
+  full_join(decennial_metadata) %>%
+  pivot_longer(names_to = "variable", values_to = "MEANRAW2", -geo)
+
+bg_averages <- bg_growingshade_main %>%
+  group_by(variable) %>%
+  summarise(
+    MEANRAW = mean(raw_value, na.rm = T),
+    MEANSCALED = mean(weights_scaled, na.rm = T)
+  )
+
+canopy_avg <-
+  tribble(
+    ~variable, ~MEANRAW2,
+    "canopy_percent", ctu_list_raw$avgcanopy[1],
+    "inverse_canopy", ctu_list_raw$avgcanopy[1]
+  )
+
+
+metadata <- bg_growingshade_main %>%
+  dplyr::group_by(type, name, variable, interpret_high_value, climate_change, environmental_justice, public_health, conservation) %>%
+  dplyr::count() %>%
+  dplyr::ungroup() %>%
+  full_join(bg_averages) %>%
+  mutate(
+    niceinterp =
+      case_when(
+        interpret_high_value == "high_opportunity" ~ "Higher",
+        TRUE ~ "Lower"
+      ),
+    nicer_interp = case_when(
+      niceinterp == "Lower" ~ "Lower values = higher priority",
+      variable == "inverse_ndvi_uncultivated" ~ "Higher values = higher priority",
+      variable == "inverse_ndvi_land" ~ "Higher values = higher priority",
+      variable == "canopy_percent2" ~ "Higher values = higher priority",
+      TRUE ~ ""
+    )
+  ) %>%
+  full_join(demo_metadata %>%
+    bind_rows(canopy_avg)) %>%
+  mutate(MEANRAW = if_else(!is.na(MEANRAW2), MEANRAW2, MEANRAW)) %>%
+  dplyr::select(-MEANRAW2, -geo) %>%
+  filter(!is.na(name))
+
+usethis::use_data(metadata, overwrite = TRUE)
+
+highest_p <- function(group_var) {
+  selectedvars <- metadata %>%
+    filter(!!enquo(group_var) == 1) %>%
+    .[, 2]
+  bg_growingshade_main %>%
+    filter(name %in% selectedvars$name) %>%
+    group_by(bg_string) %>%
+    summarise(MEAN = mean(weights_scaled, na.rm = F)) # set to false so that public health or ej doesnt get calculated if it is a nonres area
+}
+
+priority_summary_1 <- highest_p(public_health) %>%
+  rename(`Public health` = MEAN) %>%
+  full_join(highest_p(conservation) %>% rename(Conservation = MEAN)) %>%
+  full_join(highest_p(environmental_justice) %>% rename(`Environmental justice` = MEAN)) %>%
+  full_join(highest_p(climate_change) %>% rename(`Climate change` = MEAN)) %>%
+  pivot_longer(names_to = "preset", values_to = "score", -bg_string)
+
+priority_summary <- priority_summary_1 %>%
+  group_by(bg_string) %>%
+  summarise(score = max(score, na.rm = T)) %>%
+  left_join(priority_summary_1) %>%
+  rename(highest_priority = preset) %>%
+  rename(GEOID = bg_string)
+
+
+mn_bgs_raw <- bg_geo %>%
+  right_join(decennial_data %>% select(GEOID, fancyname)) %>%
+  right_join(wide_ctu_crosswalk, by = c("GEOID" = "bg_id")) %>%
+  full_join(bg_canopy, by = c("GEOID" = "bg_id")) %>%
+  full_join(priority_summary) %>%
+  full_join(priority_summary_1 %>%
+    group_by(preset) %>%
+    pivot_wider(names_from = preset, values_from = score),
+  by = c("GEOID" = "bg_string")
+  ) %>%
+  mutate(avgcanopy = mean(canopy_percent, na.rm = T)) %>%
+  dplyr::select(-c(STATEFP, COUNTYFP, TRACTCE, BLKGRPCE, NAMELSAD, MTFCC, FUNCSTAT, INTPTLAT, INTPTLON)) %>%
+  sf::st_as_sf() %>%
+  sf::st_transform(4326) %>%
+  filter(!is.na(highest_priority)) %>%
+  rename(GEO_NAME = GEOID)
+
+region_outline <- if (is.null(county)) {
+  county_outline %>%
+    group_by(STATEFP) %>%
+    summarise(geometry = sf::st_union(geometry)) %>%
+    sf::st_simplify(dTolerance = 400) %>%
+    sf::st_transform(4326)
+} else {
+  county_outline %>%
+    group_by(COUNTYFP) %>%
+    summarise(geometry = sf::st_union(geometry)) %>%
+    sf::st_simplify(dTolerance = 400) %>%
+    sf::st_transform(4326)
+}
+usethis::use_data(region_outline, overwrite = TRUE)
+
+
+speed_up <- function(x, smooth) {
+  x %>%
+    sf::st_transform(26915) %>%
+    sf::st_simplify(dTolerance = smooth, preserveTopology = T) %>%
+    sf::st_transform(4326)
+}
+# nhood_list <- nhood_list %>% st_make_valid() %>% st_simplify(dTolerance = 100) %>% st_as_sf()
+ctu_list <- ctu_list_raw %>%
+  speed_up(50)
+usethis::use_data(ctu_list, overwrite = TRUE)
+
+nhood_list <- nhood_list_raw %>%
+  speed_up(50)
+usethis::use_data(nhood_list, overwrite = TRUE)
+
+redline <- redline_raw %>%
+  speed_up(50)
+usethis::use_data(redline, overwrite = TRUE)
+
+mn_bgs <- mn_bgs_raw %>%
+  speed_up(40) %>% # 25
+  filter(!is.na(GEO_NAME)) %>%
+  mutate(GEOID = GEO_NAME)
+usethis::use_data(mn_bgs, overwrite = TRUE)
+# object.size(mn_bgs_raw) / 1e5 ; object.size(mn_bgs) / 1e5
+
+bg_growingshade_main <- bg_growingshade_main %>%
+  dplyr::select(bg_string, name, weights_scaled, raw_value) %>%
+  filter(!is.na(bg_string))
+usethis::use_data(bg_growingshade_main, overwrite = TRUE)
+```
+
+
+# Update app
+
+The code to test, then update the app
+
+
