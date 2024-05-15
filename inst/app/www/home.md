@@ -24,7 +24,7 @@ Image credit: Howard Landsman
 <br>
 <br>
 
-<p class="home"> <b>Access to trees is a human right.</b> Everyone deserves the cool shade, clean air, better runoff management, and public health 
+<p class="home"> <b>Access to trees is a human right.</b> Everyone deserves the cool shade, clean air, and public health 
 <a href="https://daneclimateaction.org/Initiatives/Tree-Canopy#ImportanceofCanopy">benefits that trees provide</a>. 
 Enhancing and preserving tree canopy cover is an important step to creating a healthy and resilient county. </p>
 <br>
@@ -55,30 +55,27 @@ Here are a few ways you can use the mapping tool. </p>
   
   <div class="grid-item">
 	<div class="material-symbols-outlined" style="font-size:60px; position:relative; left:50%; top:10%; transform: translate(-50%, -50%);"> bar_chart </div> 
-	<p class="home" style="text-align:center;">Compare priority scores across Dane County</p>
+	<p class="home" style="text-align:center;">Compare priority areas across Dane County</p>
   </div>
 </div>
 
 <br>
 <br>
 
-<h2><b> The Tree Canopy Collaborative </b></h2>
+<h2><b>Trees Are Part of the Solution</b></h2>
 <p class="home">
-	The Growing Shade website is maintained by the <a href="https://daneclimateaction.org/Initiatives/Tree-Canopy" target="_blank">
-	Tree Canopy Collaborative</a>, as an initiative of the Dane County Office of Energy and Climate Change. 
-	The aim of the Tree Canopy Collaborative is to collectively maintain, protect, and expand 
-	public and private tree canopy across Dane County, with a particular focus is on ensuring 
-	equitable access to trees and their associated benefits for all residents. 
-	<br>
-	<br>
-	Growing Shade was originally developed out of a collaboration between the
-	<a href="https://metrocouncil.org/" target="_blank">Metropolitan
-	Council</a>,
-	<a href="https://www.nature.org/en-us/about-us/where-we-work/united-states/minnesota/" target="_blank">The
-	Nature Conservancy</a>, and
-	<a href="https://treetrust.org/" target="_blank">Tree Trust</a> for mapping canopy in the Twin Cities region.	
+Trees are uniquely suited to addressing biodiversity and public health challenges as well as a host of community benefits. 
+But trees are only part of a larger solution. In addition to urban tree canopy, we need a variety of native ecosystems that also provide similar 
+air quality, biodiversity, and health benefits in tandem with tree planting and maintenance. 
+Only through a whole-system approach can we assess what the biggest needs are in a community and what solutions are most appropriate at different sites.
 </p>
 <br>
+<p class="home">
+You can learn more about the benefits of native plants and gardens as well as receive access to native plants through the 
+<a href="https://www.ripple-effects.com/Plant-Dane"> Ripple Effects program</a>. 
+</p>
+<br>
+
 <h2><b> Who can use Growing Shade? </b></h2> 
 <p class="home">
 Click the panels below to read about a few different use cases. 
@@ -110,18 +107,18 @@ Click the panels below to read about a few different use cases.
 	<br>
 	<p class="home">
 	<br>
-	Ani asks her class which of the four themes they want to use. She hovers over each theme and reads out the variables that each one includes.  
-	The students decide that the <b>public health</b> theme is the best fit: it includes the percent of people under 18 and the amount of current tree canopy.
-	Ani clicks on public health and the class immediately sees from the colors on the map that their block group is a high priority -- Ani hovers over the map 
-	and confirms that the priority score is 8.5.
+	Ani asks her class which of the four preset themes they want to use. She hovers over each theme and reads out the variables that each one includes.  
+	The students decide that the <b>Canopy Cover</b> theme is the best fit, as it shows the amount of current tree canopy.
+	Ani clicks on Canopy Cover and the class immediately sees from the colors on the map that their block group is a priority area.
 	</p>
 	<br>
 	<img class="center story" src="www/uc1_3.PNG">
 	<br>
 	<p class="home">
 	<br>
-	Ani scrolls down to the report to see how their block group scores for the other themes. It scores low for conservation, but high for the climate change and environmental justice themes.
-	One of her students points out that amount of tree canopy in their block group is about half of the county average. 
+	Ani scrolls down to the report to see how their block group scores for the other themes. 
+	The class is excited to see that it's a priority area for every theme!
+	One of her students also points out that amount of tree canopy in their block group is about half of the county average. 
 	</p>
 	<br>
 	<img class="center story" src="www/uc1_4.PNG">
@@ -165,14 +162,14 @@ Click the panels below to read about a few different use cases.
 	<img class="center story" src="www/uc2_4.PNG">
 	<img class="center story" src="www/uc2_5.PNG">
 	<br>
-	They scroll down to the report and compare their town to the county averages. Kai notices that the '% acres in a primary flood zone' variable is much higher than the county average.
-	They also see that the '% of residents who own their home' is significanty lower. All the other variables are close to or better than the county average. 
+	They scroll down to the report and compare their town to the county averages. Kai notices that the summer temperature is almost 5 degrees higher than the county average.
+	They also see that the '% of residents who own their home' is significantly lower. All the other variables are close to or better than the county average. 
 	<br>
 	<img class="center story" src="www/uc2_6.PNG">
 	<br>
 	<img class="center story" src="www/uc2_8.PNG">
 	<br>
-	Kai concludes that flood mitigation and affordable housing should be priorities in the new budget. Kai downloads the raw data
+	Kai concludes that heat relief and affordable housing should be priorities in the new budget. Kai downloads the raw data
 	so that they can easily make custom graphs to include in their presentation to the town council.
 	</p>
 	<br>
@@ -196,34 +193,20 @@ Click the panels below to read about a few different use cases.
 	<img class="center story story-stretch" src="www/uc3_1.jpg"><p style="text-align:center;">Image credit: John Diez (Pexels)</p></img>
 	<br>
 	<p class="home">
-	Mateo has heard about Growing Shade from his collegues and decides to try it out. He uses the 'neighborhoods' geography. The grant funds projects centering
-	on environmental justice, so Mateo selects that theme. Although the colors on the map show prioritization by block group, the boundary lines for neighborhoods
-	let Mateo quickly assess that neighborhoods he's focusing on are a high priority. He turns on the 'historically redlined areas' layer and notices that one
-	of the neighborhoods has a large area that was redlined. Mateo clicks the 'full screen' button and takes a screenshot image of the map to include in the grant application.
+	Mateo has heard about Growing Shade from his colleagues and decides to try it out. He uses the 'neighborhoods' geography. The grant funds projects centering
+	on environmental justice, so Mateo begins by selecting the Socioeconomic Indicators theme.
+    Mateo wants to find data supporting resident experiences of poor air quality, so he also selects the Health Disparities theme.
+	<br>
+	<br>
+	Although the colors on the map show priority areas by block group, the boundary lines for neighborhoods
+	let Mateo quickly assess whether the neighborhoods he's focusing on are a high priority for one or both themes.
+	He also turns on the 'historically redlined areas' layer since the historical context is relevant to his proposal.
+	Mateo clicks the 'full screen' button and takes a screenshot image of the map to include in the grant application.
 	</p>
 	<br>
 	<img class="center story" src="www/uc3_4.PNG">
 	<br>
     <img class="center story" src="www/uc3_2.PNG">
-	<br>
-	<p class="home">
-	Next, Mateo wants to find data supporting resident's experiences of poor air quality. He creates a custom theme that includes several variables from the 'Health' category.
-	He also decides to add in the '% of tree canopy', since trees are known to improve air quality. His custom theme confirms that the same two neighborhoods remain high priorities.
-	Mateo selects one of the neighborhoods in the drop-down menu and reads through the custom report. He notices that the neighborhood is in a block group with a low amount of tree canopy compared
-	to the county average.
-	</p>
-	<br>
-	<img class="center story" src="www/uc3_5.PNG">
-	<br>
-	<p class="home">
-	Mateo decides to expand the scope of his grant application. He adds a new request for funds to start a tree planting project that will improve the local air quality. 
-	He sees from the 'land use' section of the report that there are opportunities to expand canopy in residential and right-of-way areas.
-	Mateo proposes a campaign to provide free trees to residents and to lobby the local government to plant more trees next to roads and sidewalks.
-	</p>
-	<br>
-	<img class="center story" src="www/uc3_6.PNG">
-	<br>
-	<img class="center story story-stretch" src="www/uc3_7.jpg"><p style="text-align:center;">Image credit: Alfo Medeiros (Pexels)</p></img>
 	<br>
 	<div class="material-symbols-outlined close-accordion" style="color: black;cursor: pointer;font-size:60px; position:relative; left:50%; top:10%; transform: translate(-50%, -50%);"> expand_less </div> 
 </div>
@@ -231,7 +214,16 @@ Click the panels below to read about a few different use cases.
 <br>
 <br>
 
-
+<p class="home">
+	Growing Shade was originally developed out of a collaboration between the
+	<a href="https://metrocouncil.org/" target="_blank">Metropolitan
+	Council</a>,
+	<a href="https://www.nature.org/en-us/about-us/where-we-work/united-states/minnesota/" target="_blank">The
+	Nature Conservancy</a>, and
+	<a href="https://treetrust.org/" target="_blank">Tree Trust</a> for mapping canopy in the Twin Cities region.
+	The <a href="https://daneclimateaction.org/Initiatives/Tree-Canopy" target="_blank">
+	Tree Canopy Collaborative</a> made modifications to the original tool based on local conditions, available data, and predicted user needs.
+</p>
 
 
 

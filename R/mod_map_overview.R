@@ -332,7 +332,8 @@ mod_map_overview_server <- function(input, output, session,
             weight = 0.5, # 0.25,
             fillOpacity = 0.5,
             smoothFactor = 0.2,
-            label = ~ (paste0("Priority score: ", ifelse(!is.na(map_util$map_data2$MEAN), round(map_util$map_data2$MEAN, 3), "NA, this is a non-residential area"))),
+            #label = ~ (paste0("Priority: ", ifelse(!is.na(map_util$map_data2$SUM), map_util$map_data2$SUM, "None"))),
+            label = ~ (paste0("Total score: ", map_util$map_data2$total_score)),
             highlightOptions = highlightOptions(
               stroke = TRUE,
               color = "white",
@@ -340,17 +341,17 @@ mod_map_overview_server <- function(input, output, session,
               bringToFront = T,
               opacity = 1
             ),
-            fillColor = ~ colorNumeric(
+            fillColor = ~ colorFactor(
               # n = 5,
-              palette = "YlOrBr", # "YlOrRd", #"Oranges",
-              domain = map_util$map_data2 %>% select("MEAN") %>% .[[1]], na.color = "#fff"
-            )(map_util$map_data2 %>% select("MEAN") %>% .[[1]]),
+              palette = c("#7570b3", "#1b9e77", "#d95f02"), #YlOrBr", # "YlOrRd", #"Oranges",
+              domain = map_util$map_data2 %>% select("SUM") %>% .[[1]], na.color = "#fff"
+            )(map_util$map_data2 %>% select("SUM") %>% .[[1]]),
             popup = ~ paste0(
               "Geographic ID: ", map_util$map_data2$bg_string,
               "<br>City: ", map_util$map_data2$jurisdiction,
-              "<br>Priority score: ",  ifelse(!is.na(map_util$map_data2$MEAN), round(map_util$map_data2$MEAN, 3), "NA, this is a non-residential area"),
-              # "<br>Rank of score: ", map_util$map_data2$RANK, " out of ", nrow(map_util$map_data2),
-              "<br>Current tree canopy cover: ", round(map_util$map_data2$canopy_percent * 100, 1), "%"
+              "<br>Priority: ",  ifelse(!is.na(map_util$map_data2$SUM), map_util$map_data2$SUM, "None"),
+              "<br>Total score: ", map_util$map_data2$total_score,
+              "<br>Current tree canopy cover: ", round(map_util$map_data2$canopy_percent, 1), "%"
             ),
             options = pathOptions(pane = "Priority score"),
             layerId = ~bg_string
@@ -358,17 +359,22 @@ mod_map_overview_server <- function(input, output, session,
           # maybe want to add this: https://stackoverflow.com/questions/42245302/shiny-leaflet-highlight-polygon
           addLegend(
             # labFormat = labelFormat2(),#labelFormat(prefix = "(", suffix = ")", digits = 5),
-            title = "Priority scores<br>(10 = highest priority)", # (higher scores show<br>where trees may have<br>larger benefits)",
+            title = "Priority<br>", # (higher scores show<br>where trees may have<br>larger benefits)",
             position = "bottomleft",
             group = "Priority score",
             layerId = "score",
-            pal = colorNumeric(
-              # n = 5,
-              palette = "YlOrBr", #"YlOrRd", #"Oranges",
-              domain = map_util$map_data2 %>% select("MEAN") %>% .[[1]]
-              # ,na.color="#03fc13"
-            ),
-            values = (map_util$map_data2 %>% select("MEAN") %>% .[[1]])
+            colors = {if (!is.na(map_selections$theme2[2]) & !is.na(map_selections$theme2[1])) {
+              factor(c("#7570b3", "#1b9e77", "#d95f02")) 
+              }else{
+                factor(c("#1b9e77"))}
+              },
+            labels = {if (!is.na(map_selections$theme2[2]) & !is.na(map_selections$theme2[1])) {
+              factor(c("Both Themes", map_selections$theme2[2], map_selections$theme2[1]))
+            }else{
+              factor(c(map_selections$theme2[1]))}
+            }
+              
+              #factor(c("Both Themes", map_selections$theme2[2], map_selections$theme2[1]))
           ) %>%
           addScaleBar(
             position = "bottomleft",

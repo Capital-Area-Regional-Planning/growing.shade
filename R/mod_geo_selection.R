@@ -16,7 +16,7 @@ mod_geo_selection_ui <- function(id) {
 
 HTML("<div class='help'>
      <p>
-     Select a geographical level to map across.
+     <b>1. Choose your geographical area of interest</b>
      <br>
      <br>
      <b>Cities and townships:</b> 
@@ -24,7 +24,7 @@ HTML("<div class='help'>
      <br>
      <br>
      <b>Neighborhoods:</b> 
-     Neighborhoods are only available in the City of Madison. The boundaries are determined by local residents. Select a neighborhood by name in the dropdown menu.
+     Neighborhoods are only available in the City of Madison. The boundaries are determined by local residents; not all areas in Madison are included in a neighborhood. Select a neighborhood by name in the dropdown menu.
      <br>
      <br>
      <b>Census block group:</b> 
@@ -102,23 +102,23 @@ fluidRow(column(width = 6,
 #            ), # multiple = F,
 #          selected = "nofilter", inline = T
 #        ))
-column(width = 6,
-       div(style = "color:'green';",
-           shinyWidgets::radioGroupButtons(
-         ns("mapfilter"),
-         # h4("Report area"),
-         label = HTML("<h4><span style='font-size:14pt'>Map priority scores</span></h4>"),
-         choices = c(
-           "All scores" = "nofilter",
-           ">4" = "above4",
-           ">5" = "above5",
-           ">6" = "above6",
-           ">7" = "above7"
-           # "All priority scores" = "nofilter",
-           # "Priority scores above 5" = "above5"
-         ), # multiple = F,
-         selected = "nofilter"
-       )))
+# column(width = 6,
+#        div(style = "color:'green';",
+#            shinyWidgets::radioGroupButtons(
+#          ns("mapfilter"),
+#          # h4("Report area"),
+#          label = HTML("<h4><span style='font-size:14pt'>Map priority scores</span></h4>"),
+#          choices = c(
+#            "All scores" = "nofilter",
+#            ">4" = "above4",
+#            ">5" = "above5",
+#            ">6" = "above6",
+#            ">7" = "above7"
+#            # "All priority scores" = "nofilter",
+#            # "Priority scores above 5" = "above5"
+#          ), # multiple = F,
+#          selected = "nofilter"
+#        )))
 ))
 }
 

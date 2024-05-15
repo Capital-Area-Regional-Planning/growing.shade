@@ -1084,7 +1084,7 @@ ui_params <- tribble(
       arrange(-n_blockgroups) %>%
       .[[1, 1]]
   }, NA_real_, #"Madison", NA_real_,
-  "nhoodselected", "Capitol Neighborhoods", NA_real_,
+  "nhoodselected", "Appalachian Ridge", NA_real_,
   "center_latitude", NA_character_, st_coordinates(map_centroid)[2], # 44.963,
   "center_longitude", NA_character_, st_coordinates(map_centroid)[1], #-93.32,
   "center_zoom", NA_character_, 10,

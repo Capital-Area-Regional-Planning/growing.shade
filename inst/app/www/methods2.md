@@ -6,14 +6,12 @@ all other contributors to the original Growing Shade tool.
   
 Methods and data sources for the analyses presented within the Growing
 Shade are detailed below. Please
-<a href = "mailto:mattn@capitalarearpc.org?subject=growing%shade%20tool">contact
+<a href = "mailto:lizl@capitalarearpc.org,mattn@capitalarearpc.org?subject=Growing%Shade">contact
 us</a> if you have questions or feedback.
 
 <h2>
-<span style="font-size:16pt">Prioritization layer</span>
+<span style="font-size:16pt">Data Sources</span>
 </h2>
-
-Priority variables were sourced from several locations including:
 
 - Demographic and socioeconomic information comes from the
   <a href = 'https://www.census.gov/programs-surveys/decennial-census/decade/2020/2020-census-results.html' target = '_blank'>2020
@@ -29,7 +27,7 @@ Priority variables were sourced from several locations including:
 - Historic redlining data is obtained from
   <a href = 'https://dsl.richmond.edu/panorama/redlining/#loc=5/39.1/-94.58&text=downloadsMapping' target = "_blank">
   Mapping Inequality</a>.
-- Tree canopy and green space information is obtained from the
+- Tree canopy is obtained from the
   <a href = 'https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Sentinel-2' target = "_blank">Copernicus
   Sentinel-2 satellite mission</a>.
 - Climate data for temperatures was processed using 
@@ -38,28 +36,74 @@ Priority variables were sourced from several locations including:
 	<br>
 	Script source: Ermida, S.L., Soares, P., Mantas, V., Göttsche, F.-M., Trigo, I.F., 2020. Google Earth Engine open-source code
 	for Land Surface Temperature estimation from the Landsat series. Remote Sensing, 12 (9), 1471; https://doi.org/10.3390/rs12091471	
-- Climate data for flood risk was processed using FEMA primary floodplains hosted by
-  <a href = 'https://geodata.wisc.edu/catalog/E2CE7AA7-7E6B-4E6C-9237-DA55D4AB69CC' target = '_blank'>
-  GeoData@Wisconsin</a>
-- Land use data was processed using the CARPC 2020 Dane County Land Use Inventory
-  <a href = 'https://data-carpc.opendata.arcgis.com/' target = '_blank'>
-  CARPC 2020 Dane County Land Use Inventory</a>. Suitable land for planting trees was defined as any uncultivated
-  10m x 10m area with an NDVI value of .7 or higher that was not classified as canopy. This method does not account
-  for Sentinel-2 data overestimating canopy (see method below or FAQ for more details), so likely underetimates the total
-  available acres of suitable land.
 
-<br> Priority variables were standardized and scaled so that the z-score
-was normally distributed on a 0-10 scale (by multiplying the normal
-distribution of the z-score for each variable by 10).
+<h2>
+<span style="font-size:16pt">Prioritization Methodology</span>
+</h2>
 
-Based on user-defined selection of priority variables, standardized
-scores are averaged to create a single, integrated priority value.
+Each block group in Dane County receives  a score for each variable used in Growing Shade. Variables are scored differently depending
+on whether or not they include a <b>margin of error</b> (MOE).
+
+<i> 1. Scoring Variables <b>Without</b> MOE </i> 
+
+Datasets without MOE: Decennial Census data, Canopy data, Temperature data
+
+Each variable without MOE receives  a score of 1 for a block group if it is above the 80th percentile when compared to the
+total distribution of said variable. If the variable is below the 80th percentile, it recieves a score of 0. 
+Note that the percentile thresholds are the inverse for % canopy, as areas with low canopy should be prioritized.
+
+Additionally, variables related to race/ethnicity recieve a score of 2 if they are above the 95th percentile;
+The total score from race related variables in the Socioeconomic Indicators theme is capped at 3.
+This extra point underlies the widely recognized correlation between race and deficient tree canopy.
+
+<i> 2. Scoring Variables <b>With</b> MOE </i>
+
+Datasets with MOE: ACS data, Health data
+
+Each variable with MOE receives a score of 1 for a block group if it is significantly higher or lower when compared to the
+total distribution of said variable. Significance is determined by using a Z-test to compare each block group to the median 
+of the total population, taking into account the MOE. 
+If the Z-score is more than 1 standard deviation from the population median, then the variable is significantly higher or lower than the median.
+Whether the higher or lower block groups recieve a score of 1 depends on the variable in question -- for example, we are interested in high
+values for % asthma among adults and low values for median household income.
+If the variable is not significantly higher or lower than the median, it receives a score of 0.
+
+
+
+<i> Validation </i>
+
+Some variable populations with high margins of errors are unsuitable for analysis. Variables used in Growing Shade are considered
+valid if 60% of block groups have a coefficient of variation (i.e. dispersion of data around the mean) below 40%.
+Variables that do not meet this standard are not used.
+
+<i> Themes </i> 
+
+The total score of a block group is the sum of all variable scores in a theme.
+With the exception of the socioeconomic indicators theme,
+block groups must have a minimum score of 1 to be considered a priority area. 
+While all block groups with a score of at least 1 are priority areas, 
+those with higher scores can be interpreted as a higher priority for canopy growth/management.
+
+The minimum priority area score is also set at 1 for the Custom theme. We plan to let users customize this threshold in a future update.
+
+Using the socioeconomic indicators theme, block groups must have a minimum score of 2
+to be considered a priority area. 
+
+Different minimum scores were tested for each theme; 
+we chose the final scores based on how many priority areas were selected.
+Our intent was for each theme to show a reasonable and helpful number of priority areas --
+to prioritize block groups with the highest canopy needs, but also not be overly restrictive.
+
+<i> Acknowledgments </i>
+
+This methodology and the socioeconomic indicators theme were created by the City of Madison Data Team. 
+We are grateful for all their help integrating their work with Growing Shade.
 
 <h2>
 <span style="font-size:16pt">Tree canopy</span>
 </h2>
 
-Growing Shade uses <!-- and shows --> a tree canopy layer. A machine
+Growing Shade uses a tree canopy layer. A machine
 learning method was created in
 <a href = 'https://earthengine.google.com/' target = "_blank">Google
 Earth Engine</a> and used to detect tree cover from other land cover

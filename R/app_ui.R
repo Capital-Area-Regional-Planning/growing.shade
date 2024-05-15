@@ -138,21 +138,21 @@ tagList(
     ),
     tabPanel(
       "Mapping tool",
-      tags$footer(
-        class = 'd-none d-lg-block',#desktop
-        HTML('Source: <a href = "https://daneclimateaction.org/Initiatives/Tree-Canopy" target = "_blank">Growing Shade Project</a>. Last updated on 2023-09-01. '),
-        align = "right",
-        style = "
-              position:absolute;
-              bottom:1em;
-              right:0;
-              width:50%;
-              height:10px;   /* Height of the footer */
-              color: black;
-              padding: 0px;
-              background-color: transparent;
-              z-index: 1000;"
-      ),
+      # tags$footer(
+      #   class = 'd-none d-lg-block',#desktop
+      #   HTML('Source: <a href = "https://daneclimateaction.org/Initiatives/Tree-Canopy" target = "_blank">Growing Shade Project</a>. Last updated on 2023-09-01. '),
+      #   align = "right",
+      #   style = "
+      #         position:absolute;
+      #         bottom:1em;
+      #         right:0;
+      #         width:50%;
+      #         height:10px;   /* Height of the footer */
+      #         color: black;
+      #         padding: 0px;
+      #         background-color: transparent;
+      #         z-index: 1000;"
+      # ),
       # id = "demo",
       div(
         style = "width:100% !important;
@@ -170,17 +170,23 @@ tagList(
             HTML('<button id="tutorial">Tutorial</button><br><br>'),
             HTML('<div class="help">
             <p>
-            You can use this mapping tool to create data-driven reports for communities across Dane County. 
-            The tool has three main parts: 
+            You can use this mapping tool to prioritize where to preserve & expand canopy in Dane County,
+            as well as creating data-driven reports. There are five steps to using the Growing Shade mapping tool: 
             <br>
             <br>
-            1. Buttons to customize the geographical area and the variables used to calculate priority scores.
+            1. Choose your <b>geographical area</b> of interest
             <br>
             <br>
-            2. An interactive map of Dane County where the colors correspond to by priority scores. 
+            2. Choose your prioritization <b>theme</b>
             <br>
             <br>
-            3. A detailed report that can be downloaded and shared.
+            3. Explore priority areas using an <b>interactive map</b> of Dane County
+            <br>
+            <br>
+            4. Explore the <b>report</b> comparing your area of interest to the county as a whole
+            <br>
+            <br>
+            5. <b>Download</b> the report
             </p>
             </div>'),
             tags$script(
@@ -214,13 +220,36 @@ tagList(
             br(class="d-none d-lg-block"),
             HTML("<div class='help'>
                  <p>
-                 Scroll down to read a detailed report of your results.
+                 <b>4. Explore the report comparing your area of interest to the county as a whole</b>
+                 <br><br>
+                 Scroll down to read a detailed report of your results. There are three parts to the report.
+                 <br><br>
+                 <b>Prioritization:</b>
+                 This section will change depending on your selected geography.
+                 <br>
+                 -If you have selected a block group, it shows which themes that block group is a priority for.
+                 It also includes the value and priority score for each variable included in the theme.
+                 <br>
+                 -If you have selected a city/town or neighborhood, it shows how many block groups are a priority
+                 for your selected theme(s).
+                 It also includes average values for each variable included in the theme,
+                 both for your selected area and the county as a whole.
+                 <br><br>
+                 <b>Tree canopy</b>
+                 This section describes how the % tree canopy in your selected area compares to the county as a whole.
+                 This will change depending on your selected geography; 
+                 a block group is compared to all county block groups, 
+                 a city/town is compared to all other city/towns,
+                 and a neighborhood is compared to all other neighborhoods.
+                 <br><br>
+                 <b>Race and income disparities</b>
+                 This section describes how the % tree canopy in your selected area relates to race and income.
+                 <br><br>
                  Within the report, each section can be collapsed by clicking on the “minus” or “plus” symbol. 
                  This may be useful if you wish to compare a specific report selection across different geographies.
-                 You can also download the full report at the bottom of the page.
                  </p>
                  </div>"),
-            mod_report_ui("report_ui_1"),
+            mod_report_new_ui("report_new_ui_1"),
           ),
           mainPanel(
             width = 6,
@@ -229,15 +258,33 @@ tagList(
               style = "top:25em !important;", # style = 'width:100% !important; top:25em !important; ',
               HTML("<div class='help'>
                  <p>
-                 Use the “plus” and “minus” buttons or scroll to zoom in and out.
-                 Toggle map layers “on” or “off” with the button at the bottom of the map.
-                 Click and drag to move the map around.
-                 <br><br>
-                 If you want a picture of the map, we recommend pushing the 'full screen' button and taking a screenshot.
-                 <br><br>
-                 Note that the priority scores shown when you hover or click on an area are always for the <b>block group</b> your cursor is in.
-                 This does not change regardless of the geography level you have selected. To see the priority scores for a city, town, or neighborhood, scroll down in the report.
-                 </p>
+                <b>3. Explore priority areas using an interactive map of Dane County</b>
+                <br><br>
+                <b>Understanding Symbols</b>
+                <br>
+                -Colored block groups are priority areas determined by your selected theme(s).
+                <br>
+                -The blue border shows your selected geographical area.
+                <br>
+                -Dark grey lines show the borders of all block groups.
+                <br>
+                -Black lines show all borders of the geography you have selected (either cities & townships or neighborhoods) 
+                <br><br>
+                <b>Interacting with the Map</b>
+                <br>
+                 -Use the “plus” and “minus” buttons or scroll to zoom in and out.
+                 <br>
+                 -Toggle map layers “on” or “off” with the button at the bottom of the map.
+                 <br>
+                 -Click and drag to move the map around.
+                 <br>
+                 -Hover over a block group to see its <b>total score</b>: how many variables (in the chosen theme) it is a priority area for.
+                 Click on a block group to see more detailed information.
+                 Note that the information shown when you hover or click on an area is for the <b>block group</b> your cursor is in.
+                 This does not change regardless of the geography level you have selected. To explore information about scores for a city, town, or neighborhood, see step 4.
+                 <br>
+                 -To take a picture of the map, push the 'full screen' button and taking a screenshot.
+                </p>
                  </div>"),
               mod_map_overview_ui("map_overview_ui_1")
             ))
@@ -289,7 +336,8 @@ golem_add_external_resources <- function() {
     bundle_resources(
       path = app_sys("app/www"),
       app_title = "Growing Shade Tool"
-    )
+    ),
+    includeScript(path = "inst/app/www/checkbox.js")
     # Add here other external resources
     # for example, you can add shinyalert::useShinyalert()
   )

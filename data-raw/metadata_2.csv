@@ -1,0 +1,24 @@
+variable,name,type,interpret_high_value,temperature,socioeconomic_indicators,health_disparities,canopy_cover
+pop_density,Population density (persons / acre),people,high_opportunity,0,0,0,0
+housing_density,Housing unit density (units / acre),people,high_opportunity,0,0,0,0
+pbipoc,"Race, % people of color",people,high_opportunity,0,0,0,0
+under18,"Age, % under age 18",people,high_opportunity,0,0,0,0
+over65,"Age, % age 65 or older",people,high_opportunity,0,0,0,0
+avg_temp,Temperature on hot summer day,environment,high_opportunity,1,0,0,0
+env_cancer,Lifetime cancer risk from air toxics,health,high_opportunity,0,0,1,0
+canopy_percent,Tree canopy (%),environment,low_opportunity,0,0,0,1
+hhincome,Median household income,economics,low_opportunity,0,1,0,0
+pblacknh,"Race, % Black or African American",people,high_opportunity,0,1,0,0
+pothmultnh,"Race, % Multiracial or other",people,high_opportunity,0,0,0,0
+pasiannh,"Race, % Asian",people,high_opportunity,0,1,0,0
+phisppop,"Race, % Hispanic or Latino",people,high_opportunity,0,1,0,0
+pamindnh,"Race, % Indigenous",people,high_opportunity,0,0,0,0
+ppacificinh,"Race, % Pacific Islander",people,high_opportunity,0,0,0,0
+pwk_nowork,% of unemployed residents,economics,high_opportunity,0,0,0,0
+pownhome,% of residents who own their home,economics,low_opportunity,0,0,0,0
+MHLTH,Mental health not good for >=14 days among adults (%),health,high_opportunity,0,0,1,0
+PHLTH,Physical health not good for >=14 days among adults (%),health,high_opportunity,0,0,1,0
+COPD,Chronic obstructive pulmonary disease among adults (%),health,high_opportunity,0,0,1,0
+CASTHMA,Asthma among adults (%),health,high_opportunity,0,0,1,0
+hh_above_poverty,% households above the poverty level,economics,low_opportunity,0,1,0,0
+hh_less_50k,% households making less than 50k,economics,high_opportunity,0,1,0,0

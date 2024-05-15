@@ -65,102 +65,90 @@ mod_map_selections_ui <- function(id) {
 ))),
 HTML("<div class='help'>
      <p>
-     Select a theme to map priority. Each preset theme averages the priority score of several variables -- hover over a theme to see which variables it includes.
+     <b>2. Choose your prioritization theme</b>
      <br>
      <br>
-     <b>Climate change:</b> 
-     	Trees protect people and property from the risks of climate change, such as by reducing impacts of floods and increased heat.
+      How can we choose where to preserve & plant canopy? The answer depends on your goals! 
+      Do you simply want to plant trees in areas that lack canopy? Or do you want to focus on creating a positive impact to human health?
+      <br>
+     <br>
+      Growing Shade includes four premade 'themes' that align with common goals for canopy projects.
+      Each theme includes one or more related variables -- hover over a theme to see which variables it includes.
+      You can select either one or two themes. Choosing two themes allows you to explore how different themes intersect.
      <br>
      <br>
-     <b>Conservation:</b> 
-     	Trees are a source of food and habitat to birds and small mammals while also providing opportunities for pollination.
+     <b>Temperature:</b> 
+     	Trees can signficantly reduce hot summer temperatures.
+     	Use this theme if your goals are related to heat reduction or climate change.
      <br>
      <br>
-     <b>Environmental justice:</b> 
-     Trees are not always distributed equitably in U.S. cities, unjustly depriving residents of the myriad benefits canopy provideds.  
+     <b>Socioeconomic Indicators:</b> 
+     	Trees are not always distributed equitably in U.S. cities, unjustly depriving some residents of the myriad benefits canopy provides.
+     	Use this theme if your goals are related to environmental justice.
      <br>
      <br>
-     <b>Public Health:</b> 
-     Trees provide shade, improve local air quality, reduce air pollution, and can even boost the mental health.
+     <b>Health Disparities:</b> 
+     Trees provide shade, improve local air quality, reduce air pollution, and can even boost mental health.
+     Use this theme if your goals are related to improving health outcomes.
+     <br>
+     <br>
+     <b>Canopy Cover:</b> 
+     The amount of canopy cover across the county varies widely, depending on land use and other factors.
+     Use this theme if your goals are related to planting trees in canopy deficient areas.
      <br>
      <br>
      <b>Custom:</b> 
-     Map priority using any combination of 25+ variables. 
-     Click on a variable to turn in “on” or “off” – a “check mark” indicates that the input is being used to calculate priority scores. 
-     You can also “select all” or “deselect all” variables within a drop down menu.
+     Create your own theme using any combination of 20+ variables.
+     Use this theme if your goals relate to other variables not included in the premade themes.
+     Click on a variable to turn it “on” or “off” – a check mark indicates that the variable is being used. 
+     You can also “select all” or “deselect all” variables within each categorical drop down menu.
      </p>
      </div>"),
     # fluidRow(
-    radioButtons(ns("preset"),
-      HTML("<h2><section style='font-size:20pt'>Priority layer</h2></section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset or create a custom layer to understand the overlap. </section></p>"),
-      choiceNames = list(
-        HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
+    HTML("<h2><section style='font-size:20pt'>Priority layer</h2></section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset or create a custom layer to understand the overlap. <b>Choose up to two themes.</b> </section></p>"),
+    #checkboxGroupInput(ns("theme2"), "", c("Temperature", "Socioeconomic Indicators", "Health Disparities", "Canopy Cover", "Custom"), selected = "Socioeconomic Indicators"),
+    checkboxGroupInput(ns("theme2"), "",
+                       choiceNames = list(
+                         #Temperature
+                         HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
              title='<strong>Variables include:</strong><br>
-             - Amount of greenspace (non-agricultural)<br>
-             - Temperature on a hot summer day<br>
-             - Tree canopy in 2021<br>
-             - Share of developed acres in primary flood zone'>Climate change</a>"),
-        
-        # '<div class="tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'
-        
-        # HTML('<a href="#" data-toggle="tooltip" title="Hooray!">Climate change</a>'),
-        # HTML("<a>Climate change</a>"),
-        HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
+             - Temperature on a hot summer day'>Temperature</a>"),
+                         #Socioeconomic Indicators
+                         HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
              title='<strong>Variables include:</strong><br>
-             - Amount of greenspace (non-agricultural)<br>
-             - Tree canopy in 2021'>
-             Conservation</a>"),
-        HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
+             - Income, % households above the poverty level<br>
+             - Income, % households making less than 50k<br>
+             - Income, median household income<br>
+             - Race, % residents identifying as Black or African American<br>
+             - Race, % residents identifying as Asian<br>
+             - Race, % residents identifying as Hispanic or Latino'>Socioeconomic Indicators</a>"),
+                         #Health Disparities
+                         HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
              title='<strong>Variables include:</strong><br>
-             - Income, % residents with income <185% of poverty threshold<br>
-             - Race, % residents identifying as a person of color'>
-             Environmental justice</a>"),
-        HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
+             - % asthma among adults <br>
+             - % chronic obstructive pulmonary disease among adults<br>
+             - % mental health not good for >=14 days among adults (%)<br>
+             - % physical health not good for >=14 days among adults (%)'>Health Disparities</a>"),
+                         #Canopy Cover
+                         HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
              title='<strong>Variables include:</strong><br>
-             - Amount of greenspace (non-agricultural)<br>
-             - Lifetime cancer risk from air toxins<br>
-             - Age, % under age 18 or 65+<br>
-             - Temperature on a hot summer day<br>
-             - Tree canopy in 2021'>
-             Public health</a>"),
-        HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
+             - % Tree canopy'>Canopy Cover</a>"),
+                         #Custom
+                         HTML("<a data-toggle='tooltip' trigger='click' data-html='true' data-placement='bottom'
              title='Select custom variables below'>
              Custom</a>")
-        # "Climate change",
-        # "Conservation",
-        # "Environmental justice",
-        # "Public health",
-        # "Custom"
-      ),
-      choiceValues = c(
-        "Climate change",
-        "Conservation",
-        "Environmental justice",
-        "Public health",
-        "Custom"
-      ), inline = T,
-      selected = "Environmental justice"
-      # selected = "Custom"
-      ),
-      # shinyBS::bsModal(ns("testmodal"), title = "Test Modal", trigger = "Climate change",
-      #                  h5("Data Guidelines"),
-      #                  tags$ol(
-      #                    tags$li("Must have Resp_ID as the first column, occasion_ID as second and dependent variable as the third"),
-      #                    tags$li("Must have no missing value in any fields")
-      #                  ), easyClose = TRUE, footer = NULL),
-      # radioTooltip(ns("preset"), choice = "Environmental justice", title = "The natural and built environments intersect with income, race, and ethnicity. This preset identifies areas and people facing disproportionately negative consequences of environmental decisions.", placement = "bottom", trigger = "hover"),
-      # radioTooltip(ns("preset"), choice = "Conservation", title = "Reducing tree canopy loss will be critical to meet carbon emission reduction goals and conserve biodiversity across taxa. This preset identifies areas with the region’s highest stock of existing trees.", placement = "bottom", trigger = "hover"),
-      # radioTooltip(ns("preset"), choice = "Custom", title = "Select this option to customize the prioritization variables.", placement = "bottom", trigger = "hover"),
-      # radioTooltip(ns("preset"), choice = "Climate change", title = "Amount of greenspace (non-agricultural),<br> temperature on a hot summer day, tree canopy coverage in 2021, share of developed acres in a primary flood zone.", placement = "bottom", trigger = "hover"),
-      # radioTooltip(ns("preset"), choice = "Public health", title = "Trees improve air quality and cool land surface temperatures leading to better health outcomes, particularly for sensitive populations. Identify areas where trees could most improve health outcomes.", placement = "bottom", trigger = "hover"),
-    # ) %>%
-    #   shinyhelper::helper(
-    #     type = "markdown", content = "PresetHelp", size = "m"
-    #     # )
-    #   ),
-    conditionalPanel(
+                       ),
+                       choiceValues = c(
+                         "Temperature",
+                         "Socioeconomic Indicators",
+                         "Health Disparities",
+                         "Canopy Cover",
+                         "Custom"
+                       ), inline = F,
+                       selected = "Socioeconomic Indicators"),
+  conditionalPanel(
       ns = ns,
-      condition = "input.preset == 'Custom'", # && input.onoff == 'On'",
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
 
       shinyWidgets::pickerInput(ns("peopleInput"),
         label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Demographics</span></h4>")),
@@ -179,8 +167,8 @@ HTML("<div class='help'>
     ),
     conditionalPanel(
       ns = ns,
-      condition = "input.preset == 'Custom'", # && input.onoff == 'On'",
-
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
+      
       shinyWidgets::pickerInput(ns("placeInput"),
         label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Environment & Climate</span></h4>")),
         choices = dplyr::filter(metadata, type == "environment") %>% .$name,
@@ -201,8 +189,8 @@ HTML("<div class='help'>
     ),
     conditionalPanel(
       ns = ns,
-      condition = "input.preset == 'Custom'", # && input.onoff == 'On'",
-
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
+      
       shinyWidgets::pickerInput(ns("healthInput"),
         label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Health</span></h4>")),
         choices = dplyr::filter(metadata, type == "health") %>% .$name,
@@ -220,8 +208,8 @@ HTML("<div class='help'>
     ),
     conditionalPanel(
       ns = ns,
-      condition = "input.preset == 'Custom'", # && input.onoff == 'On'",
-
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
+      
       shinyWidgets::pickerInput(ns("economicsInput"),
         label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Socioeconomics</span></h4>")),
         choices = dplyr::filter(metadata, type == "economics") %>% .$name,
@@ -257,7 +245,12 @@ mod_map_selections_server <- function(input, output, session # ,
       rbind(as_tibble(input$healthInput)) %>%
       rbind(as_tibble(input$economicsInput))
 
-    input_values$preset <- input$preset
+    if(is.null(input$theme2[0])) {
+      input_values$theme2 <- "Socioeconomic Indicators"
+    } else {
+      input_values$theme2 <- input$theme2
+    }
+   
   })
   return(input_values)
 }

@@ -57,8 +57,17 @@ app_server <- function(input, output, session) {
   #   print(paste0("selected blockgroup: ", (blockgroup_selections$selected_blockgroup)))
   # }) # to check that selections are working
 
+  #Original!
+  # mod_report_server(
+  #   "report_ui_1",
+  #   geo_selections,
+  #   map_selections,
+  #   blockgroup_selections,
+  #   map_util
+  # )
+  
   mod_report_server(
-    "report_ui_1",
+    "report_new_ui_1",
     geo_selections,
     map_selections,
     blockgroup_selections,

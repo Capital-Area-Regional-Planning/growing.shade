@@ -519,7 +519,7 @@ mod_report_server <- function(id,
     
     report_priority_table <- reactive({
       req(TEST() != "")
-      
+      fdg
       step1 <- param_dl_data() %>%
         filter(name %in%
                  if (map_selections$preset == "Environmental justice") {
@@ -561,7 +561,7 @@ mod_report_server <- function(id,
                     # full_join(tibble(name = "Aggregated priority score"),
                     #           MEANSCALED = NA, by = 'name') %>%
                     add_column(
-                      grouping = "Region average",
+                      grouping = "County average",
                       order = 2
                     ) %>%
                     rename(RAW = MEANRAW),
@@ -573,9 +573,9 @@ mod_report_server <- function(id,
         filter(!is.na(name)) %>%
         pivot_wider(names_from = grouping, values_from = RAW) %>%
         rename(Variable = name) %>%
-        mutate(`Region average` = case_when(
-          str_detect(`Variable`, "%") ~ paste0(round(`Region average` * 100, 2), "%"),
-          TRUE ~ as.character(round(`Region average`, 2))
+        mutate(`County average` = case_when(
+          str_detect(`Variable`, "%") ~ paste0(round(`County average` * 100, 2), "%"),
+          TRUE ~ as.character(round(`County average`, 2))
         )) %>%
         mutate(`Selected area` = case_when(
           str_detect(`Variable`, "%") ~ paste0(round(`Selected area` * 100, 2), "%"),
@@ -1340,7 +1340,8 @@ mod_report_server <- function(id,
             imageOutput(ns("rank_plot"), height = "100%", width = "100%") }
         ),
         br(),
-        tableOutput(ns("priority_table"))
+        tableOutput(ns("priority_table")),
+        strong(tolower(map_selections$theme))
       )
     })
     

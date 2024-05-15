@@ -5,8 +5,8 @@
 	When we know better, we do better. 
 	That’s the ethic of the Tree Canopy Collaborative (TCC), a network of governmental, nonprofit, and academic partners jointly invested in preserving and expanding urban tree canopy across Dane County. 
 	In the past, the benefits of urban tree canopy were not well understood, nor were their public health or economic value considered tangible benefits. 
-	The effects of historic redlining practices that segregated cities along racial lines meant that the lack of urban tree canopy paralleled these policies. 
-	As a result underserved populations today are likely to have less tree canopy than affluent neighborhoods across the United States.
+	The effects of socioeconomic segregation that segregated cities along racial lines meant that the lack of urban tree canopy paralleled these policies. 
+	As a result, underserved populations today are likely to have less tree canopy than affluent neighborhoods across the United States.
 	<br>
 	<br>
 	We can do better. The Tree Canopy Collaborative’s mission is to preserve, maintain, and expand urban tree canopy across Dane County, with an emphasis on underserved areas. 
