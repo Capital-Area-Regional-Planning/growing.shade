@@ -11,28 +11,6 @@
 #'
 mod_map_selections_ui <- function(id) {
   ns <- NS(id)
-  
-  
-  # radioTooltip <- function(id, choice, title, placement = "bottom", trigger = "hover", options = NULL){
-  # 
-  #   options = shinyBS:::buildTooltipOrPopoverOptionsList(title, placement, trigger, options)
-  #   options = paste0("{'", paste(names(options), options, sep = "': '", collapse = "', '"), "'}")
-  #   bsTag <- shiny::tags$script(shiny::HTML(paste0("
-  #   $(document).ready(function() {
-  #     setTimeout(function() {
-  #       $('input', $('#", id, "')).each(function(){
-  #         if(this.getAttribute('value') == '", choice, "') {
-  #           opts = $.extend(", options, ", {html: true});
-  #           $(this.parentElement).tooltip('destroy');
-  #           $(this.parentElement).tooltip(opts);
-  #         }
-  #       })
-  #     }, 500)
-  #   });
-  # ")))
-  #   htmltools::attachDependencies(bsTag, shinyBS:::shinyBSDep)
-  # }
-  
 
   tagList(
     tags$head(tags$style(HTML(
@@ -104,9 +82,7 @@ HTML("<div class='help'>
      You can also “select all” or “deselect all” variables within each categorical drop down menu.
      </p>
      </div>"),
-    # fluidRow(
     HTML("<h2><section style='font-size:20pt'>Priority layer</h2></section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset or create a custom layer to understand the overlap. <b>Choose up to two themes.</b> </section></p>"),
-    #checkboxGroupInput(ns("theme2"), "", c("Temperature", "Socioeconomic Indicators", "Health Disparities", "Canopy Cover", "Custom"), selected = "Socioeconomic Indicators"),
     checkboxGroupInput(ns("theme2"), "",
                        choiceNames = list(
                          #Temperature
@@ -153,50 +129,6 @@ HTML("<div class='help'>
       shinyWidgets::pickerInput(ns("peopleInput"),
         label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Demographics</span></h4>")),
         choices = dplyr::filter(metadata, type == "people") %>% .$name,
-        # choicesOpt = list(
-        #   subtext = paste0(filter(metadata, type == "people") %>% .$niceinterp,
-        #                    " values have higher priority scores")),
-        options = list(
-          `actions-box` = TRUE,
-          size = 20,
-          `selected-text-format` = "count > 1"
-        ),
-        multiple = T,
-        selected = NULL # filter(metadata, type == "people")[1, 2]
-      )
-    ),
-    conditionalPanel(
-      ns = ns,
-      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
-      
-      shinyWidgets::pickerInput(ns("placeInput"),
-        label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Environment & Climate</span></h4>")),
-        choices = dplyr::filter(metadata, type == "environment") %>% .$name,
-        choicesOpt = list(
-          subtext = paste0(dplyr::filter(metadata, type == "environment") %>% .$nicer_interp)
-        ),
-        # choicesOpt = list(
-        #   subtext = paste0(filter(metadata, type == "environment") %>% .$niceinterp,
-        #                    " values have higher priority scores")),
-        options = list(
-          `actions-box` = TRUE,
-          size = 20,
-          `selected-text-format` = "count > 1"
-        ),
-        multiple = T,
-        selected = dplyr::filter(metadata, type == "environment")[9, 2]
-      )
-    ),
-    conditionalPanel(
-      ns = ns,
-      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
-      
-      shinyWidgets::pickerInput(ns("healthInput"),
-        label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Health</span></h4>")),
-        choices = dplyr::filter(metadata, type == "health") %>% .$name,
-        # choicesOpt = list(
-        #   subtext = paste0(filter(metadata, type == "health") %>% .$niceinterp,
-        #                     " values have higher priority scores")),
         options = list(
           `actions-box` = TRUE,
           size = 20,
@@ -208,14 +140,46 @@ HTML("<div class='help'>
     ),
     conditionalPanel(
       ns = ns,
-      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",  # && input.onoff == 'On'",
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",
+      
+      shinyWidgets::pickerInput(ns("placeInput"),
+        label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Environment & Climate</span></h4>")),
+        choices = dplyr::filter(metadata, type == "environment") %>% .$name,
+        choicesOpt = list(
+          subtext = paste0(dplyr::filter(metadata, type == "environment") %>% .$nicer_interp)
+        ),
+        options = list(
+          `actions-box` = TRUE,
+          size = 20,
+          `selected-text-format` = "count > 1"
+        ),
+        multiple = T,
+        selected = dplyr::filter(metadata, type == "environment")[9, 2]
+      )
+    ),
+    conditionalPanel(
+      ns = ns,
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",
+      
+      shinyWidgets::pickerInput(ns("healthInput"),
+        label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Health</span></h4>")),
+        choices = dplyr::filter(metadata, type == "health") %>% .$name,
+        options = list(
+          `actions-box` = TRUE,
+          size = 20,
+          `selected-text-format` = "count > 1"
+        ),
+        multiple = T,
+        selected = NULL
+      )
+    ),
+    conditionalPanel(
+      ns = ns,
+      condition = "input.theme2[0] == 'Custom' || input.theme2[1] == 'Custom'",
       
       shinyWidgets::pickerInput(ns("economicsInput"),
         label = shiny::HTML(paste0("<h4><span style='font-size:14pt'>Socioeconomics</span></h4>")),
         choices = dplyr::filter(metadata, type == "economics") %>% .$name,
-        # choicesOpt = list(
-        #   subtext = paste0(filter(metadata, type == "economics") %>% .$niceinterp,
-        #                    " values have higher priority scores")),
         options = list(
           `actions-box` = TRUE,
           size = 20,
@@ -231,10 +195,7 @@ HTML("<div class='help'>
 #' map_selections Server Function
 #'
 #' @noRd
-mod_map_selections_server <- function(input, output, session # ,
-                                      # preset_selections,
-                                      # current_tab
-) {
+mod_map_selections_server <- function(input, output, session) {
   ns <- session$ns
 
   input_values <- reactiveValues() # start with an empty reactiveValues object.

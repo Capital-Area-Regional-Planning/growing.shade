@@ -10,7 +10,6 @@
 mod_home_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # br(class="d-none d-lg-block"), br(),
     br(), br(),
     shiny::div(
       id = "home",

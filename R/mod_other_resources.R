@@ -10,7 +10,6 @@
 mod_other_resources_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # br(class="d-none d-lg-block"), br(class="d-none d-lg-block"),
     br(), br(),
     shiny::div(
       id = "otherresources",

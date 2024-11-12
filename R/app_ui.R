@@ -100,7 +100,7 @@ display:none!important
 tagList(
   tags$html(lang = "en"),
   tags$head(tags$style(HTML(navbar_js))),
-  # shiny::includeHTML("inst/app/www/google-analytics.html"),
+  shiny::includeHTML("inst/app/www/google-analytics.html"),
   # Leave this function for adding external resources
   golem_add_external_resources(),
   shinydisconnect::disconnectMessage(
@@ -111,7 +111,6 @@ tagList(
   
   
   # List the first level UI elements here
-  # tags$head(img(src = "www/main-logo.png", height = "60px", alt = "MetCouncil logo")), #,'.navbar-brand{display:none;}')),
   navbarPage(
     title = div(style = "align:center",
                 a(href = "https://daneclimateaction.org/Initiatives/Tree-Canopy", target = "_blank", 
@@ -131,40 +130,19 @@ tagList(
     ),
     tabPanel(
       "HOME",
-      # id = "B",
-      # br(), # br(),
-      #fluidRow((mod_storymap_ui("storymap_ui_1")))
       mod_home_ui("home_ui_1")
     ),
     tabPanel(
       "Mapping tool",
-      # tags$footer(
-      #   class = 'd-none d-lg-block',#desktop
-      #   HTML('Source: <a href = "https://daneclimateaction.org/Initiatives/Tree-Canopy" target = "_blank">Growing Shade Project</a>. Last updated on 2023-09-01. '),
-      #   align = "right",
-      #   style = "
-      #         position:absolute;
-      #         bottom:1em;
-      #         right:0;
-      #         width:50%;
-      #         height:10px;   /* Height of the footer */
-      #         color: black;
-      #         padding: 0px;
-      #         background-color: transparent;
-      #         z-index: 1000;"
-      # ),
-      # id = "demo",
       div(
         style = "width:100% !important;
                     margin-left:0  !important; margin-top:30px  !important;
                     max-width: 4000px !important; min-width:100% !important",
         sidebarLayout(
           sidebarPanel(
-            # waiter::useWaitress(),
             width = 6,
             style = "height: 90vh; overflow-y: auto;",
             
-            # width = 2,
             HTML("<h1><section style='font-size: 22pt;'>Welcome to the Growing Shade mapping tool</h1></section><br>"),
             HTML('<p>Click below to toggle the tutorial text on and off.</p><br>'),
             HTML('<button id="tutorial">Tutorial</button><br><br>'),
@@ -212,10 +190,8 @@ tagList(
               ),
             hr(style = "margin-top: 2px; margin-bottom: 2px "),
             mod_geo_selection_ui("geo_selection_ui_1"),
-            # HTML('<hr style="border-top: black;border-top-style: solid;border-right-width: 5px;">'),
             hr(style = "margin-top: 2px; margin-bottom: 2px "),
-            
-            # br(),
+          
             mod_map_selections_ui("map_selections_ui_1"),
             br(class="d-none d-lg-block"),
             HTML("<div class='help'>
@@ -253,9 +229,8 @@ tagList(
           ),
           mainPanel(
             width = 6,
-            # div(class="outer3",
             fluidRow(div(
-              style = "top:25em !important;", # style = 'width:100% !important; top:25em !important; ',
+              style = "top:25em !important;",
               HTML("<div class='help'>
                  <p>
                 <b>3. Explore priority areas using an interactive map of Dane County</b>
@@ -312,6 +287,10 @@ tagList(
       HTML('<h2><b>Our Work</b></h2>'),
       br(),
       fluidRow((mod_storymap_ui("storymap_ui_1")))
+    ),
+    tabPanel(
+      "Contact",
+      mod_contact_ui("contact_ui_1")
     ),
   )
 )

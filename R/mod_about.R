@@ -1,4 +1,4 @@
-#' home UI Function
+#' About UI Function
 #'
 #' @description A shiny Module.
 #'
@@ -10,7 +10,6 @@
 mod_about_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # br(class="d-none d-lg-block"), br(),
     br(), br(),
     shiny::div(
       id = "about",

@@ -129,6 +129,7 @@ mod_map_utils_server <- function(input, output, session,
   })
   
   make_map_data_filter <- reactive({
+    # keeping this in case I want to re-implement it
     # filterstep <- if(geo_selections$mapfilter == "above4") {
     #   make_map_data() %>%
     #     filter(SUM >= 4)
@@ -157,10 +158,6 @@ mod_map_utils_server <- function(input, output, session,
     vals$map_data <- make_map_data()
     vals$map_data2 <- make_map_data_filter()
   })
-
-  # observe({
-  #   vals$canopycov <- make_ccp()
-  # })
 
   return(vals)
 }

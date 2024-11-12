@@ -11,8 +11,6 @@
 mod_geo_selection_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    # waiter::useWaitress(),
-    # shinybrowser::detect(),
 
 HTML("<div class='help'>
      <p>
@@ -34,24 +32,15 @@ HTML("<div class='help'>
 HTML("<h2><section style='font-size:20pt'>Geography</h2>"),
     radioButtons(
       ns("geo"),
-      # h4("Report area"),
       label = HTML("</section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Make a selection to create a custom report. <strong>Scoll down to read and download the report.</strong></section></p>"),
-      # choices = c(
-      #   "Cities and townships" = "ctus",
-      #   "Neighborhoods (Minneapolis and St.Paul only)" = "nhood",
-      #   "A Census block group" = "blockgroups"
-      # ), # multiple = F,
       choiceNames = list("Cities and townships", 
                          HTML("<section class='d-block d-lg-none'>Neighborhoods</section>
                               <section class='d-none d-lg-block'>Neighborhoods (Madison only)</section>"), # (Minneapolis and St.Paul only)</section>"), #desktop
                          "Census block group"),
       choiceValues = list("ctus", "nhood", "blockgroups"),
       selected = "ctus",
-      # inline = (shinybrowser::get_device() == "Mobile")
     ),
-    # hr(),
 
-    # uiOutput(ns("geodropdowns"))
 fluidRow(column(width = 6,
                 conditionalPanel(
       ns = ns,
@@ -86,39 +75,7 @@ fluidRow(column(width = 6,
       condition = "input.geo == 'blockgroups'",
       HTML("Please click on an area within the map at right.")
     )
-),
-# column(width = 6,
-#        radioButtons(
-#          ns("mapfilter"),
-#          # h4("Report area"),
-#          label = HTML("<h4><span style='font-size:14pt'>Map priority scores</span></h4>"),
-#          choices = c(
-#            "All scores" = "nofilter",
-#            "Above 5" = "above5",
-#            "Above 6" = "above6",
-#            "Above 7" = "above7"
-#            # "All priority scores" = "nofilter",
-#            # "Priority scores above 5" = "above5"
-#            ), # multiple = F,
-#          selected = "nofilter", inline = T
-#        ))
-# column(width = 6,
-#        div(style = "color:'green';",
-#            shinyWidgets::radioGroupButtons(
-#          ns("mapfilter"),
-#          # h4("Report area"),
-#          label = HTML("<h4><span style='font-size:14pt'>Map priority scores</span></h4>"),
-#          choices = c(
-#            "All scores" = "nofilter",
-#            ">4" = "above4",
-#            ">5" = "above5",
-#            ">6" = "above6",
-#            ">7" = "above7"
-#            # "All priority scores" = "nofilter",
-#            # "Priority scores above 5" = "above5"
-#          ), # multiple = F,
-#          selected = "nofilter"
-#        )))
+)
 ))
 }
 

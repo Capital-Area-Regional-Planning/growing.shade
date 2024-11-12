@@ -51,10 +51,13 @@ which can be highly specific (for instance, a user may want to focus on planting
 trees in areas to enhance health benefits in children).
 
 
-**Q. Why do different canopy tools show different canopy coverage
-percents?** 
-<span style="line-height: .1;"><br></span> A. We created this tool to
-respond to the stakeholder need of providing up-to-date, actionable
+**Q. Why do different canopy tools show different canopy coverage percents?** 
+<span style="line-height: .1;"><br></span> A. Simply put, different canopy
+tools use different data sources and methodologies to derive tree canopy cover percent.
+No technique will ever be perfect -- there is almost always a tradeoff between high accuracy
+and getting timely canopy updates.
+
+We created this tool to respond to the stakeholder need of providing up-to-date, actionable
 data. Therefore, we focus on satellite data to provide current data that
 can be used in decision-making. Current data is necessary to manage
 impacts from invasive species like emerald ash borer or respond to
@@ -63,18 +66,9 @@ emerging climate hazards.
 To get current (near real-time) data, Growing Shade leverages Sentinel-2
 satellite data. While Sentinel-2 data has excellent temporal resolution,
 the spatial resolution is 10 meters squared. This is often a bigger area
-than the canopy from a single tree.
+than the canopy from a single tree. We use a high-resolution LiDAR-derived
+canopy dataset to help correct errors caused by the spatial resolution.
 
-For the original Twin Cities region tool, detected tree canopy from Sentinel-2 data 
-was compared with a more spatially accurate (but less temporally accurate)
-<a href = "https://gisdata.mn.gov/dataset/base-landcover-twincities" target = "_blank">1
-meter squared landcover data set</a>. There was high correlation but
-Sentinel-2 data detected about a quarter more tree canopy than the 1 meter
-squared landcover data. Essentially, this means that for the Twin Cities region, 
-the methods in Growing Shade detect areas with at least 89% tree canopy coverage. We
-re-scaled our data using this relationship to improve the clarity of
-messaging -- we hope to perform a similar analysis for Dane County in the near future
-to improve the accuracy of reported canopy.
 More information is given in the “methods” tab.
 
 

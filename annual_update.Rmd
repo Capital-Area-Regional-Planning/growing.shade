@@ -778,7 +778,7 @@ find_crosswalks <- function(x, buffer) {
 
 ctu_crosswalk <- find_crosswalks(ctu_geo, -150)
 
-nhood_crosswalk <- find_crosswalks(nhood_geo, 50) %>% 
+nhood_crosswalk <- find_crosswalks(nhood_geo, -50) %>% 
 #one nhood is too small to survive the buffer so add it back in manually
   add_row(GEO_NAME = "Wexford Village Condominium Owners Assoc", city = "Madison", bg_id = "550250002041")
 
@@ -787,6 +787,9 @@ wide_ctu_crosswalk <- ctu_crosswalk %>%
   rename(jurisdiction = GEO_NAME)
 
   save(ctu_crosswalk, nhood_crosswalk, wide_ctu_crosswalk, file = paste0(here::here(), "/data-raw/geography_data.rda"))
+  save(ctu_crosswalk, file = paste0(here::here(), "/data/ctu_crosswalk.rda"))
+  save(nhood_crosswalk, file = paste0(here::here(), "/data/nhood_crosswalk.rda"))
+
 } else {
   load(paste0(here::here(), "/data-raw/geography_data.rda"))
 }
@@ -856,21 +859,44 @@ TODO - again, can I just share these with the IT account somehow?
 if (canopy == TRUE) {
   
 # The files where the canopy data is stored - change these when updating to the names of the files downloaded from GEE
-  bg_canopy <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_blockgroups_year2023.csv")) %>% 
-  arrange(GEOID) %>% 
-  remove_lake_bgs("GEOID")
-
-  ctu_list_raw <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_ctu_year2023.csv")) %>% 
-  arrange(GEO_NAME)
   
-  nhood_list <- read_csv(paste0(here::here(), "/data-raw/DC_TreeAcres_nhood_year2023.csv")) %>% 
-  arrange(GEO_NAME)
+#TODO the error calculation code is in the KPI canopy script right now
+  bg_canopy <-
+    read_csv(paste0(here::here(), "/data-raw/TreeAcres_bg_year2023.csv")) %>%
+    arrange(GEOID) %>%
+    remove_lake_bgs("GEOID") %>%
+    left_join(read_csv(
+      paste0(
+        here::here(),
+        "/data-raw/canopy_error_bg.csv")),
+        join_by(GEOID == GEOID)
+      ) %>% 
+    mutate(`1` = `1` + error) %>% 
+    select(-error)
+      
+  ctu_list_raw <- read_csv(paste0(here::here(), "/data-raw/TreeAcres_ctu_year2023.csv")) %>% 
+  arrange(GEO_NAME) %>% 
+    left_join(read_csv(
+      paste0(
+        here::here(),
+        "/data-raw/canopy_error_ctu.csv")),
+        join_by(GEO_NAME == GEO_NAME)
+      ) %>% 
+    mutate(`1` = `1` + error) %>% 
+    select(-error)
+  
+  nhood_list <- read_csv(paste0(here::here(), "/data-raw/TreeAcres_nhood_year2023.csv")) %>% 
+  arrange(GEO_NAME) %>% 
+    left_join(read_csv(
+      paste0(
+        here::here(),
+        "/data-raw/canopy_error_nhood.csv")),
+        join_by(GEO_NAME == GEO_NAME)
+      ) %>% 
+    mutate(`1` = `1` + error) %>% 
+    select(-error)
   
 #Process for block groups
-
-#just using the same coefficient for the twin cities for now, will potentially calculate for Madison later
-calib_coeff <- .88
-
 
 bg_geo <- arrange(bg_geo, GEOID)
 bg_canopy$ALAND <- bg_geo$ALAND
@@ -1108,7 +1134,7 @@ ACS_Value_Update <- function(Estimate, MOE, high_low){
 
   value <- ifelse(value == high_low, 1, 0)
   
-  return(z_score)
+  return(value)
 
 }
 

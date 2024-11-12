@@ -4,10 +4,7 @@ Methods
 We would like to thank the developers, advisors, consultants, and 
 all other contributors to the original Growing Shade tool.
   
-Methods and data sources for the analyses presented within the Growing
-Shade are detailed below. Please
-<a href = "mailto:lizl@capitalarearpc.org,mattn@capitalarearpc.org?subject=Growing%Shade">contact
-us</a> if you have questions or feedback.
+Methods and data sources for the analyses presented within Growing Shade are detailed below.
 
 <h2>
 <span style="font-size:16pt">Data Sources</span>
@@ -115,18 +112,16 @@ water (from the 2020 land use inventory)</a> or
 <a href = 'https://developers.google.com/earth-engine/datasets/catalog/USDA_NASS_CDL?hl=en' target = '_blank'>cultivated
 cropland</a> were removed.
 
-The tree canopy as identified with Sentinel-2 data was calibrated
-to the tree canopy identified in the Twin Cities Region in 2015 using LiDAR data from 2011
-(<a href="https://gisdata.mn.gov/dataset/base-landcover-twincities" target="_blank">Twin
-Cities Metropolitan area 1-meter land cover classification</a>). With
-1000 equal-area regions across the 7-county area, a scaling factor of
-0.88 was used to bring the Sentinel data in line with on-the-ground
-tree canopy. This scaling factor is appropriate for our methods of using
-10 m x 10 m resolution data, which is often larger than tree canopies.
-This scaling factor makes our data align very closely with other reports
-(r^2 = 0.96) while still leveraging the scalability and temporal
-accuracy of our method. Note that the percentage of canopy in a given area
-is calculated using the total land area and ignores permanent bodies of water.
+A supervised learning algorithm (random forest) is trained to identify canopy from non-canopy. 
+The input layers are created from a full year worth of data. They are grouped into 5 phenological layers depending on date
+ – winter, spring, early summer, summer, fall. For each layer, the normal difference vegetation index (NDVI) is calculated, 
+ then a mosaic is made using the ‘best’ pixel (max NDVI).
+ 
+Dane County has a diversity of landcover so some areas are more prone to misclassification. 
+To account for this, the classification results are corrected using a "baseline error" calculated by 
+comparing the most recent LiDAR-derived canopy layer to this method (using the same year as the LiDAR data).
+
+Note that the percentage of canopy in a given area is calculated using the total land area and ignores permanent bodies of water.
 
 <h2>
 <span style="font-size:16pt">Update Schedule</span>
