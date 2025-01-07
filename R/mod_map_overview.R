@@ -57,8 +57,7 @@ mod_map_overview_server <- function(input, output, session,
     html = waiter::spin_loader(), # spin_fading_circles(),
     color = "rgba(255,255,255,.5)"
   )
-
- 
+  
   #### main map ---------
   output$map <- renderLeaflet({ #  map --------
     leaflet(options = leafletOptions(
@@ -359,6 +358,30 @@ mod_map_overview_server <- function(input, output, session,
     }
   )
 
+  #center and zoom on selected area when button is pressed
+  observe({
+    
+    if (geo_selections$selected_geo == "ctus") {
+      selected_area_bounds <- ctu_list %>% 
+        filter(GEO_NAME == geo_selections$selected_area)
+    } else if (geo_selections$selected_geo == "nhood") {
+      selected_area_bounds <- nhood_list %>% 
+        filter(GEO_NAME == geo_selections$selected_area)
+    } else if (geo_selections$selected_geo == "blockgroups") {
+      selected_area_bounds <- mn_bgs %>% 
+        filter(GEO_NAME == input$map_shape_click$id)
+    }
+    
+    #make coordinates the right format for leaflet input
+    selected_area_bounds <- selected_area_bounds %>% 
+      st_bbox() %>% 
+      as.double()
+    
+    #zoom and center the map
+    leafletProxy("map") %>%
+      flyToBounds(selected_area_bounds[1], selected_area_bounds[2], selected_area_bounds[3], selected_area_bounds[4])
+   }) %>% 
+    bindEvent(geo_selections$zoom_and_center)
 
   # ### save map clicks -----------
   vals <- reactiveValues()

@@ -82,7 +82,8 @@ HTML("<div class='help'>
      You can also “select all” or “deselect all” variables within each categorical drop down menu.
      </p>
      </div>"),
-    HTML("<h2><section style='font-size:20pt'>Priority layer</h2></section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset or create a custom layer to understand the overlap. <b>Choose up to two themes.</b> </section></p>"),
+    #HTML("<h2><section style='font-size:20pt'>Priority layer</h2></section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset theme or create a custom theme to understand the overlap. <b>Choose up to two themes.</b> </section></p>"),
+    HTML("<p><section style='font-weight: normal;' class='d-none d-lg-block'>Trees intersect with regional issues and priorities. Use a preset theme or create a custom theme to understand the overlap. <b>Choose up to two themes.</b> </section></p>"),
     checkboxGroupInput(ns("theme2"), "",
                        choiceNames = list(
                          #Temperature

@@ -29,10 +29,10 @@ HTML("<div class='help'>
      Block groups are areas defined by the US census bureau that contain about 250-550 housing units. Click on an area on the map to select a block group.
      </p>
      </div>"),
-HTML("<h2><section style='font-size:20pt'>Geography</h2>"),
+#HTML("<h2><section style='font-size:20pt'>Geography</h2>"),
     radioButtons(
       ns("geo"),
-      label = HTML("</section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Make a selection to create a custom report. <strong>Scoll down to read and download the report.</strong></section></p>"),
+      label = HTML("</section><p><section style='font-weight: normal;' class='d-none d-lg-block'>Choose a geographical area to create a custom report. <strong>Scoll down to read and download the report.</strong></section></p>"),
       choiceNames = list("Cities and townships", 
                          HTML("<section class='d-block d-lg-none'>Neighborhoods</section>
                               <section class='d-none d-lg-block'>Neighborhoods (Madison only)</section>"), # (Minneapolis and St.Paul only)</section>"), #desktop
@@ -76,18 +76,36 @@ fluidRow(column(width = 6,
       HTML("Please click on an area within the map at right.")
     )
 )
-))
+),
+actionButton(ns("zoom_and_center"), label = "Zoom to Area"),
+)
 }
 
 #' geo_selection Server Functions
 #'
 #' @noRd
 mod_geo_selection_server <- function(id) {
+
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     input_values <- reactiveValues()
+    
+    # isPressed <- eventReactive(input$zoom_and_center, {
+    #   if(input$zoom_and_center){
+    #     "The button was pressed"
+    #   } else {
+    #     "The button was NOT pressed"
+    #   }
+    # }, ignoreNULL = FALSE)
+    
+    #has the center/zoom button been pressed?
+    isPressed <- eventReactive(input$zoom_and_center, {
+        input$zoom_and_center
+    }, ignoreNULL = FALSE)
+
     observe({
+      input_values$zoom_and_center <- isPressed()
       input_values$selected_geo <- input$geo
       input_values$mapfilter <- input$mapfilter
       input_values$selected_area <- if (input$geo == "ctus") {
@@ -98,8 +116,10 @@ mod_geo_selection_server <- function(id) {
         ""
       }
     })
+    
     return(input_values)
   })
+  
 }
 
 ## To be copied in the UI

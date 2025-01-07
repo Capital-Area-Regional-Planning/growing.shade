@@ -8,24 +8,55 @@
 #'
 #' @importFrom shiny NS tagList
 
+#original code
+# mod_report_new_ui <- function(id) {
+#   ns <- NS(id)
+#   tagList(
+#     shinybrowser::detect(),
+#     
+#     shinyWidgets::useShinydashboard(),
+#     (uiOutput(ns("geoarea"))),
+#     br(),
+#     fluidRow(uiOutput(ns("priority_box"))),
+#     fluidRow(uiOutput(ns("treecanopy_box"))),
+#     fluidRow(uiOutput(ns("disparity_box"))),
+#     HTML("<div class='help'>
+#                  <p>
+#                   <b>5. Download the report</b>
+#                  </p>
+#                  </div>"),
+#     fluidRow(uiOutput(ns("download_box")))
+#   )
+# }
+
+#Testing
 mod_report_new_ui <- function(id) {
   ns <- NS(id)
   tagList(
     shinybrowser::detect(),
     
-    shinyWidgets::useShinydashboard(),
+    #shinyWidgets::useShinydashboard(),
     (uiOutput(ns("geoarea"))),
     br(),
-    fluidRow(uiOutput(ns("priority_box"))),
-    fluidRow(uiOutput(ns("treecanopy_box"))),
-    fluidRow(uiOutput(ns("disparity_box"))),
+    navset_tab(
+      nav_panel(title = "Priority",
+                br(),
+    fluidRow(uiOutput(ns("priority_box")))),
+    nav_panel(title = "Canopy",
+              br(),
+    fluidRow(uiOutput(ns("treecanopy_box")))),
+    nav_panel(title = "Equity & Income",
+              br(),
+    fluidRow(uiOutput(ns("disparity_box")))),
+    nav_panel(title = "Download",
     HTML("<div class='help'>
                  <p>
                   <b>5. Download the report</b>
                  </p>
                  </div>"),
-    fluidRow(uiOutput(ns("download_box")))
-  )
+    br(),
+    fluidRow(uiOutput(ns("download_box"))))
+  ))
 }
 
 #' report Server Functions
@@ -521,6 +552,16 @@ mod_report_server <- function(id,
           plot_data <- xyTable((select(plot_data, as.name(map_selections$theme2[1]))[[1]]), (select(plot_data, as.name(map_selections$theme2[2]))[[1]])) %>% 
             as.data.frame()
           
+          #match color to scheme for map
+          plot_data <- plot_data %>% 
+                  mutate(color_key = case_when(x == 0 & y == 0 ~ "none",
+                                           x > 0 & y == 0 ~ "one",
+                                           x == 0 & y > 0 ~ "two",
+                                           x > 0 & y > 0 ~ "both",
+                                           TRUE ~ "error"))
+          
+          group.colors <- c(none = "#ffffff", one = "#d95f02", two ="#1b9e77", both = "#7570b3")
+          
           x_breaks <- metadata %>% 
             select(as.name(tolower(map_selections$theme2[1]) %>% 
                              gsub(" ", "_", .))) %>% 
@@ -531,8 +572,11 @@ mod_report_server <- function(id,
                              gsub(" ", "_", .))) %>% 
             sum()
           
-          plot <- ggplot(plot_data, aes(x=x, y=y, size=number)) + 
-            geom_point(alpha=0.5, shape=21, color="#77a12e", fill="#77a12e") +
+          plot <- ggplot(plot_data, aes(x=x, y=y, size=number, fill = color_key)) + 
+            #geom_point(alpha=0.5, shape=21, color="#77a12e", fill="#77a12e") +
+            geom_point(alpha=0.5, shape=21, color="#77a12e") +
+            #Not doing anything...
+            scale_fill_manual(values=group.colors) +
             scale_size(range = c(5, 15)) +
             scale_y_continuous(breaks = seq(0, y_breaks, by=1), limits = c(-.1, y_breaks+.1)) +
             scale_x_continuous(breaks = seq(0, x_breaks, by=1), limits = c(0, x_breaks)) +
@@ -1150,10 +1194,11 @@ mod_report_server <- function(id,
     output$treecanopy_box <- renderUI({
       req(TEST() != "")
       
-      shinydashboard::box(
-        title = ("Tree canopy"),
-        width = 12, collapsed = shinybrowser::get_device() == "Mobile",
-        status = "danger", solidHeader = F, collapsible = TRUE,
+      # shinydashboard::box(
+      #   title = ("Tree canopy"),
+      #   width = 12, collapsed = shinybrowser::get_device() == "Mobile",
+      #   status = "danger", solidHeader = F, collapsible = TRUE,
+        tagList(
         (tree_text()),
         fluidRow(
           align = "center",
@@ -1166,10 +1211,11 @@ mod_report_server <- function(id,
     output$priority_box <- renderUI({
       req(TEST() != "")
       
-      shinydashboard::box(
-        title = "Prioritization",
-        width = 12, collapsed = shinybrowser::get_device() == "Mobile",
-        status = "danger", solidHeader = F, collapsible = TRUE,
+      # shinydashboard::box(
+      #   title = "Prioritization",
+      #   width = 12, collapsed = shinybrowser::get_device() == "Mobile",
+      #   status = "danger", solidHeader = F, collapsible = TRUE,
+      tagList(
         rank_text(),
         if((map_selections$theme2[1] == "Custom" | (!is.na(map_selections$theme2[2]) & map_selections$theme2[2] == "Custom")) & nrow(map_selections$allInputs) == 0) {
           HTML("<p style='color:red;'> Error: please select at least one custom variable from the dropdown menus.</p>")
@@ -1195,10 +1241,11 @@ mod_report_server <- function(id,
     output$disparity_box <- renderUI({
       req(TEST() != "")
       
-      shinydashboard::box(
-        title = "Race & income disparities",
-        width = 12, collapsed = shinybrowser::get_device() == "Mobile",
-        status = "danger", solidHeader = F, collapsible = TRUE,
+      # shinydashboard::box(
+      #   title = "Race & income disparities",
+      #   width = 12, collapsed = shinybrowser::get_device() == "Mobile",
+      #   status = "danger", solidHeader = F, collapsible = TRUE,
+      tagList(
         equity_text(),
         fluidRow(
           align = "center",
@@ -1213,7 +1260,8 @@ mod_report_server <- function(id,
     output$temp_box <- renderUI({
       req(TEST() != "")
       
-      shinydashboard::box(
+      # shinydashboard::box(
+      tagList(
         title = "Temperature",
         width = 12, collapsed = shinybrowser::get_device() == "Mobile",
         status = "danger", solidHeader = F, collapsible = TRUE,
@@ -1229,16 +1277,18 @@ mod_report_server <- function(id,
     output$download_box <- renderUI({
       req(TEST() != "")
       
-      shinydashboard::box(
-        title = "Download data",
-        width = 12, collapsed = shinybrowser::get_device() == "Mobile",
-        status = "danger", solidHeader = F, collapsible = TRUE,
+      # shinydashboard::box(
+        # title = "Download data",
+        # width = 12, collapsed = shinybrowser::get_device() == "Mobile",
+        # status = "danger", solidHeader = F, collapsible = TRUE,
+      tagList(
         HTML("<section class='d-none d-lg-block'>
              Use the buttons below to download a version of this report which can be printed or shared. 
              The raw data may also be downloaded as an excel or shapefile. Please be patient, as your file may take a minute to begin downloading.<br></section>"),# uiOutput(ns("download_para")),
         HTML("<section class='d-block d-lg-none'>
              Download a complete version of this report. Please be patient, as your file may take a minute to begin downloading.
              Use a desktop computer to download raw data or shapefiles.<br></section>"),# uiOutput(ns("download_para")),
+        br(),
         fluidRow(
           column(width = 4, downloadButton(ns("dl_report"), label = "Text report")), #uiOutput(ns("get_the_report"))),
           column(class='d-none d-lg-block', width = 4, downloadButton(ns("dl_data"), label = "Raw data")), #uiOutput(ns("get_the_data"))),

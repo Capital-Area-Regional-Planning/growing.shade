@@ -62,6 +62,14 @@ Here are a few ways you can use the mapping tool. </p>
 <br>
 <br>
 
+<p class="home">
+Learn more with the 
+<a href="https://carpc.sharepoint.com/:b:/g/EeLvD4KlqBlIon0Jpn_thl4BXabfL9t7nvTb5ZjHd7vG5g">
+Growing Shade User Guide</a>.
+</p>
+
+<br>
+
 <h2><b>Trees Are Part of the Solution</b></h2>
 <p class="home">
 Trees are uniquely suited to addressing biodiversity and public health challenges as well as a host of community benefits. 

@@ -134,15 +134,26 @@ tagList(
     ),
     tabPanel(
       "Mapping tool",
+    card(
+      #height = "90vh",
       div(
+        #style = "margin-top:15px;",
         style = "width:100% !important;
-                    margin-left:0  !important; margin-top:30px  !important;
+                    margin-left:0  !important; margin-top:15px  !important;
                     max-width: 4000px !important; min-width:100% !important",
-        sidebarLayout(
-          sidebarPanel(
-            width = 6,
+
+        # sidebarLayout(
+        #   sidebarPanel(
+        #     width = 6,
+        #     style = "height: 90vh; overflow-y: auto;",
+        
+        layout_sidebar(
+          fillable = F,
+          #style = "height: 90vh; overflow-y: auto;",
+          sidebar = sidebar(
             style = "height: 90vh; overflow-y: auto;",
-            
+            width = "40vw",
+            bg = "white",
             HTML("<h1><section style='font-size: 22pt;'>Welcome to the Growing Shade mapping tool</h1></section><br>"),
             HTML('<p>Click below to toggle the tutorial text on and off.</p><br>'),
             HTML('<button id="tutorial">Tutorial</button><br><br>'),
@@ -188,11 +199,16 @@ tagList(
                 });
               });'
               ),
-            hr(style = "margin-top: 2px; margin-bottom: 2px "),
-            mod_geo_selection_ui("geo_selection_ui_1"),
-            hr(style = "margin-top: 2px; margin-bottom: 2px "),
-          
-            mod_map_selections_ui("map_selections_ui_1"),
+            navset_tab(
+              nav_panel(title = "Geography",
+            #hr(style = "margin-top: 2px; margin-bottom: 2px "),
+            mod_geo_selection_ui("geo_selection_ui_1")),
+            
+            nav_panel(title = "Theme",
+           # hr(style = "margin-top: 2px; margin-bottom: 2px "),
+            mod_map_selections_ui("map_selections_ui_1"))
+            ),
+            
             br(class="d-none d-lg-block"),
             HTML("<div class='help'>
                  <p>
@@ -220,15 +236,12 @@ tagList(
                  <br><br>
                  <b>Race and income disparities</b>
                  This section describes how the % tree canopy in your selected area relates to race and income.
-                 <br><br>
-                 Within the report, each section can be collapsed by clicking on the “minus” or “plus” symbol. 
-                 This may be useful if you wish to compare a specific report selection across different geographies.
                  </p>
                  </div>"),
             mod_report_new_ui("report_new_ui_1"),
           ),
-          mainPanel(
-            width = 6,
+          #mainPanel(
+            #width = 6,
             fluidRow(div(
               style = "top:25em !important;",
               HTML("<div class='help'>
@@ -263,9 +276,10 @@ tagList(
                  </div>"),
               mod_map_overview_ui("map_overview_ui_1")
             ))
-          )
+          #)
         )
       )
+    )
     ),
     tabPanel(
       "Resources",
@@ -284,9 +298,9 @@ tagList(
       # id = "B",
       #br(), br(),
       mod_about_ui("about_ui_1"),
-      HTML('<h2><b>Our Work</b></h2>'),
-      br(),
-      fluidRow((mod_storymap_ui("storymap_ui_1")))
+      #HTML('<h2><b>Our Work</b></h2>'),
+      #br(),
+      #fluidRow((mod_storymap_ui("storymap_ui_1")))
     ),
     tabPanel(
       "Contact",
